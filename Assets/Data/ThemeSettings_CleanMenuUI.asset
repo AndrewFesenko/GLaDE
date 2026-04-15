@@ -1,0 +1,36 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5de47ff8db7a46246b4622a62d6df279, type: 3}
+  m_Name: ThemeSettings_CleanMenuUI
+  m_EditorClassIdentifier: 
+  custom1:
+    name: Blue
+    graphic1: {r: 0.19215687, g: 0.5647059, b: 0.8117647, a: 1}
+    text1:
+      serializedVersion: 2
+      rgba: 4294967295
+  custom2:
+    name: Red
+    graphic2: {r: 1, g: 0, b: 0.20497656, a: 1}
+    text2:
+      serializedVersion: 2
+      rgba: 4294967295
+  custom3:
+    name: Purple
+    graphic3: {r: 0.70295143, g: 0, b: 1, a: 1}
+    text3:
+      serializedVersion: 2
+      rgba: 4294967295
+  currentColor: {r: 0.19215687, g: 0.5647059, b: 0.8117647, a: 1}
+  textColor:
+    serializedVersion: 2
+    rgba: 4294967295

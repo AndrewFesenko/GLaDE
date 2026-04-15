@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: f5cabc55e871858458da237e417bd688
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 127095
+  packageName: Clean Menu UI
+  packageVersion: 1.4.3
+  assetPath: Assets/SlimUI/Clean/Scripts/Misc/MouseSwayCamera.cs
+  uploadId: 637167

@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 22838ef514025ed419978c24f9bea3ef
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 127095
+  packageName: Clean Menu UI
+  packageVersion: 1.4.3
+  assetPath: Assets/SlimUI/Clean/Prefabs/Buttons/Btn_Outlined_3.prefab
+  uploadId: 637167

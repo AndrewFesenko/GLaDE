@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 2c51b8091d6fcaf44b8d2ffabc7f1861
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 127095
+  packageName: Clean Menu UI
+  packageVersion: 1.4.3
+  assetPath: Assets/SlimUI/Clean/Prefabs/Background/Fog.prefab
+  uploadId: 637167

@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: c6222f5217a5b5547a61447e2b4e4b8d
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 9100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 127095
+  packageName: Clean Menu UI
+  packageVersion: 1.4.3
+  assetPath: Assets/SlimUI/Clean/Animations/Buttons/Wide/Wide Style 1/Btn_Wide_Style1.controller
+  uploadId: 637167

@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 0af0bb5c026021549b09d953712cf29c
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 7400000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 127095
+  packageName: Clean Menu UI
+  packageVersion: 1.4.3
+  assetPath: Assets/SlimUI/Clean/Animations/Panels/SplashScreenIn.anim
+  uploadId: 637167

@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: f3c5f6c9df9bd5446a13ce3bc13c731b
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 100100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 127095
+  packageName: Clean Menu UI
+  packageVersion: 1.4.3
+  assetPath: Assets/SlimUI/Clean/Prefabs/Background/Background.prefab
+  uploadId: 637167

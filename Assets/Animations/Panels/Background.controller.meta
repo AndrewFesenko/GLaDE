@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: c9dc37aae19eea944b77bc1ede1db887
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 9100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 127095
+  packageName: Clean Menu UI
+  packageVersion: 1.4.3
+  assetPath: Assets/SlimUI/Clean/Animations/Panels/Background.controller
+  uploadId: 637167

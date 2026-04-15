@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 7290baa7a76e0f84e8e1d1ed3bb4e3a8
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 7400000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 127095
+  packageName: Clean Menu UI
+  packageVersion: 1.4.3
+  assetPath: Assets/SlimUI/Clean/Animations/Panels/QuitQuestion.anim
+  uploadId: 637167

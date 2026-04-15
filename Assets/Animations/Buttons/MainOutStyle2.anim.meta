@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: c5044c66a94292342a536af09607daa8
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 7400000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 127095
+  packageName: Clean Menu UI
+  packageVersion: 1.4.3
+  assetPath: Assets/SlimUI/Clean/Animations/Buttons/MainOutStyle2.anim
+  uploadId: 637167

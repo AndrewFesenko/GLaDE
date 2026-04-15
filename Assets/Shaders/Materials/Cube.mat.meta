@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: f87761ef0636fb248ad8be43915671a2
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 2100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 127095
+  packageName: Clean Menu UI
+  packageVersion: 1.4.3
+  assetPath: Assets/SlimUI/Clean/Shaders/Materials/Cube.mat
+  uploadId: 637167

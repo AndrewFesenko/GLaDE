@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 79b0757444f95424e8719c41f12aa0c9
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 127095
+  packageName: Clean Menu UI
+  packageVersion: 1.4.3
+  assetPath: Assets/SlimUI/Clean/Prefabs/Buttons/Btn_Thumbnail.prefab
+  uploadId: 637167

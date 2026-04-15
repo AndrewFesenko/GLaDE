@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 166ef83b9cddc0c42b844dbf4626c16b
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 127095
+  packageName: Clean Menu UI
+  packageVersion: 1.4.3
+  assetPath: Assets/SlimUI/Clean/Prefabs/Buttons/Btn_Experimental2.prefab
+  uploadId: 637167

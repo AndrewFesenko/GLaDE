@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 12cc38aad9804484884afb37aa66e0ec
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 9100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 127095
+  packageName: Clean Menu UI
+  packageVersion: 1.4.3
+  assetPath: Assets/SlimUI/Clean/Animations/Panels/Home_Question_Panel.controller
+  uploadId: 637167

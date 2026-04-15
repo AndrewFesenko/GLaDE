@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 055f0e3326d78c744947be7fa7224925
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 7400000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 127095
+  packageName: Clean Menu UI
+  packageVersion: 1.4.3
+  assetPath: Assets/SlimUI/Clean/Animations/Panels/LoadPanel.anim
+  uploadId: 637167

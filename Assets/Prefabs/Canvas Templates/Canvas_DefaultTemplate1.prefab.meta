@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 66305bcd51113254fabd571239a2bc1c
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 127095
+  packageName: Clean Menu UI
+  packageVersion: 1.4.3
+  assetPath: Assets/SlimUI/Clean/Prefabs/Canvas Templates/Canvas_DefaultTemplate1.prefab
+  uploadId: 637167

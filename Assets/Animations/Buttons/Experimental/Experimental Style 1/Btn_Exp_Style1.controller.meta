@@ -1,0 +1,16 @@
+fileFormatVersion: 2
+guid: dc8f132079b1fca418a069574352068b
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 9100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 127095
+  packageName: Clean Menu UI
+  packageVersion: 1.4.3
+  assetPath: Assets/SlimUI/Clean/Animations/Buttons/Experimental/Experimental Style
+    1/Btn_Exp_Style1.controller
+  uploadId: 637167

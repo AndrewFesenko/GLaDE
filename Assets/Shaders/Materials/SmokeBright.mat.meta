@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: c01f0227e1a112545b7eca8c06edce8c
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 2100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 127095
+  packageName: Clean Menu UI
+  packageVersion: 1.4.3
+  assetPath: Assets/SlimUI/Clean/Shaders/Materials/SmokeBright.mat
+  uploadId: 637167

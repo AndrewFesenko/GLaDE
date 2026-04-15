@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: a4612be3bc1fda345a2d2b0872b6e39f
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 9100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 127095
+  packageName: Clean Menu UI
+  packageVersion: 1.4.3
+  assetPath: Assets/SlimUI/Clean/Animations/AudioSlider.controller
+  uploadId: 637167

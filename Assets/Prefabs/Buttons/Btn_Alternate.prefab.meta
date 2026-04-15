@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: fa113480f4f86b849a47ea46e7657127
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 127095
+  packageName: Clean Menu UI
+  packageVersion: 1.4.3
+  assetPath: Assets/SlimUI/Clean/Prefabs/Buttons/Btn_Alternate.prefab
+  uploadId: 637167

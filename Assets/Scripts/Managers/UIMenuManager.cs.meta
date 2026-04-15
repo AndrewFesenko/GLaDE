@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: 296007ee8e8c83b46af6e81654b53065
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 127095
+  packageName: Clean Menu UI
+  packageVersion: 1.4.3
+  assetPath: Assets/SlimUI/Clean/Scripts/Managers/UIMenuManager.cs
+  uploadId: 637167

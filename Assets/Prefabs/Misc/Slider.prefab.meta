@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: d4c61d68a8596844f93db78b7ec8438a
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 127095
+  packageName: Clean Menu UI
+  packageVersion: 1.4.3
+  assetPath: Assets/SlimUI/Clean/Prefabs/Misc/Slider.prefab
+  uploadId: 637167

@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 8714a0dfa3b89db47970244bdc3975a6
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 11400000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 127095
+  packageName: Clean Menu UI
+  packageVersion: 1.4.3
+  assetPath: Assets/SlimUI/Data/ThemeSettings_CleanMenuUI.asset
+  uploadId: 637167

@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 0572fe89e8379714e8792e196b37b21b
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 9100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 127095
+  packageName: Clean Menu UI
+  packageVersion: 1.4.3
+  assetPath: Assets/SlimUI/Clean/Animations/Panels/LoadGame_Panel.controller
+  uploadId: 637167

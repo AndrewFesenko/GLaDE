@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 5a6dc7c64bf72c94e90b5023c0604554
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 127095
+  packageName: Clean Menu UI
+  packageVersion: 1.4.3
+  assetPath: Assets/SlimUI/Clean/Shaders/UIBlur.mat
+  uploadId: 637167

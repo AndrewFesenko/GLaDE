@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 7d348e0d29610e74a963580ae3392434
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 4890085278179872738
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 127095
+  packageName: Clean Menu UI
+  packageVersion: 1.4.3
+  assetPath: Assets/SlimUI/Clean/Scenes/Demos/Template1Settings.lighting
+  uploadId: 637167

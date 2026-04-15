@@ -1,0 +1,16 @@
+fileFormatVersion: 2
+guid: 429934c92f06cae44b70ffa6638bb964
+ShaderImporter:
+  externalObjects: {}
+  defaultTextures: []
+  nonModifiableTextures: []
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 127095
+  packageName: Clean Menu UI
+  packageVersion: 1.4.3
+  assetPath: Assets/Shaders/Blur.shader
+  uploadId: 637167

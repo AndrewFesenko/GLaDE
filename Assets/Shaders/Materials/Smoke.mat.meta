@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 6ef249c0aff570e41bc0d6192466e0c5
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 2100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 127095
+  packageName: Clean Menu UI
+  packageVersion: 1.4.3
+  assetPath: Assets/SlimUI/Clean/Shaders/Materials/Smoke.mat
+  uploadId: 637167

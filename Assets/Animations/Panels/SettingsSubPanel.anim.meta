@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: b388726c332d75b49a8ffc7c145b8ef6
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 7400000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 127095
+  packageName: Clean Menu UI
+  packageVersion: 1.4.3
+  assetPath: Assets/SlimUI/Clean/Animations/Panels/SettingsSubPanel.anim
+  uploadId: 637167

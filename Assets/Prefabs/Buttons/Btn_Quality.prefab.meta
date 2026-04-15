@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 2c4a64c0b05847d479433095bd6ceb2e
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 127095
+  packageName: Clean Menu UI
+  packageVersion: 1.4.3
+  assetPath: Assets/SlimUI/Clean/Prefabs/Buttons/Btn_Quality.prefab
+  uploadId: 637167
