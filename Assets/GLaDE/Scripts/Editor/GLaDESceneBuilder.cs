@@ -271,7 +271,7 @@ namespace GLaDE.EditorTools
             float deskTop = 0.82f;
 
             // Notepad: a wall board to the left of the problem, mirroring the whiteboard on the right.
-            BuildNotepad(theme, problemGo.transform, NotepadPos, FaceFrom(NotepadPos, PlayerStart + Vector3.up * 1.5f));
+            BuildNotepad(theme, problemGo.transform, NotepadPos, FaceFrom(NotepadPos, PlayerStart + Vector3.up * 1.5f), problem.problemId);
 
             var tools = new GameObject("Guided Tools");
             tools.transform.SetParent(problemGo.transform, false);
@@ -314,7 +314,7 @@ namespace GLaDE.EditorTools
         }
 
         /// <summary>Wall-mounted drawing board: point and hold the trigger to write, Clear button on the frame.</summary>
-        static void BuildNotepad(VisualTheme theme, Transform parent, Vector3 pos, Quaternion rot)
+        static void BuildNotepad(VisualTheme theme, Transform parent, Vector3 pos, Quaternion rot, string notebookKey)
         {
             float w = 1.2f, h = 0.95f;
             var root = BuildBoardShell(theme, pos, rot, parent, w, h, out var canvas, true);
@@ -328,14 +328,30 @@ namespace GLaDE.EditorTools
             quad.transform.localScale = new Vector3(w - 0.04f, paperH, 1f);
             var pad = quad.AddComponent<Notepad>();
             pad.width = 1200; pad.height = Mathf.RoundToInt(1200 * paperH / (w - 0.04f));
+            pad.notebookKey = notebookKey;
 
-            var title = UIKit.MakeText(canvas, "Title", "<b>Notepad</b>   <size=75%>point at the paper and hold the trigger to write</size>", 24, TextAlignmentOptions.MidlineLeft,
-                new Vector2(0f, 0f), new Vector2(30, 14), new Vector2(w * 1000f - 260, 60));
+            var title = UIKit.MakeText(canvas, "Title", "<b>Notepad</b>  <size=70%>hold the trigger to write</size>", 22, TextAlignmentOptions.MidlineLeft,
+                new Vector2(0f, 0f), new Vector2(24, 14), new Vector2(430, 56));
             title.color = theme.labelColor;
-            var clear = UIKit.MakeButton(canvas, "Clear", "Clear", 24, new Vector2(170, 56), UIKit.WarnColor);
-            var crt = clear.GetComponent<RectTransform>();
-            crt.anchorMin = new Vector2(1f, 0f); crt.anchorMax = new Vector2(1f, 0f); crt.pivot = new Vector2(1f, 0f);
-            crt.anchoredPosition = new Vector2(-30, 16);
+
+            // Bottom strip: page navigation on the left, undo / clear on the right.
+            var row = new GameObject("Pad Buttons", typeof(RectTransform), typeof(HorizontalLayoutGroup)).GetComponent<RectTransform>();
+            row.SetParent(canvas, false);
+            row.anchorMin = new Vector2(1f, 0f); row.anchorMax = new Vector2(1f, 0f); row.pivot = new Vector2(1f, 0f);
+            row.anchoredPosition = new Vector2(-20, 12); row.sizeDelta = new Vector2(720, 56);
+            var hl = row.GetComponent<HorizontalLayoutGroup>();
+            hl.spacing = 8; hl.childControlWidth = true; hl.childControlHeight = true; hl.childForceExpandWidth = false; hl.childAlignment = TextAnchor.MiddleRight;
+            var prev = UIKit.MakeButton(row, "Prev", "< Page", 20, new Vector2(120, 52));
+            var pageLabel = UIKit.MakeText(row, "Page", "Page 1 / 1", 20, TextAlignmentOptions.Center, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(130, 52));
+            pageLabel.gameObject.AddComponent<LayoutElement>().preferredWidth = 130;
+            pageLabel.color = theme.labelColor;
+            var next = UIKit.MakeButton(row, "Next", "Page >", 20, new Vector2(120, 52));
+            var undo = UIKit.MakeButton(row, "Undo", "Undo", 20, new Vector2(110, 52), UIKit.WarnColor);
+            var clear = UIKit.MakeButton(row, "Clear", "Clear page", 20, new Vector2(140, 52), UIKit.WarnColor);
+            pad.pageLabel = pageLabel;
+            UnityEventTools.AddPersistentListener(prev.onClick, pad.PreviousPage);
+            UnityEventTools.AddPersistentListener(next.onClick, pad.NextPage);
+            UnityEventTools.AddPersistentListener(undo.onClick, pad.Undo);
             UnityEventTools.AddPersistentListener(clear.onClick, pad.Clear);
         }
 
@@ -440,12 +456,12 @@ namespace GLaDE.EditorTools
             mat.transform.localScale = new Vector3(5.2f, 0.012f, 3.2f);
             mat.GetComponent<MeshRenderer>().sharedMaterial = Mat("Work Mat", new Color(0.24f, 0.27f, 0.34f), 0f, 0.25f);
 
-            BuildLogo(env, new Vector3(-2.6f, 2.55f, 5.44f), Quaternion.identity, 1.1f, 0.5f);   // high on the back wall, off to the side of the work area
+            BuildLogo(env, new Vector3(0f, 2.75f, 5.44f), Quaternion.identity, 1.0f, 0.55f);   // centred high on the back wall, above the structure from the player's viewpoint
 
             var floor = GameObject.CreatePrimitive(PrimitiveType.Plane);
             floor.name = "Floor";
             floor.transform.SetParent(env, false);
-            floor.transform.localScale = new Vector3(1.2f, 1f, 1.2f);
+            floor.transform.localScale = new Vector3(1.06f, 1f, 1.06f);   // 10.6 m: inside the walls, so teleporting never lands outside the room
             floor.GetComponent<MeshRenderer>().sharedMaterial = theme.ground;
             var area = floor.AddComponent<TeleportationArea>();
             int teleportMask = InteractionLayerMask.GetMask("Teleport");
@@ -456,10 +472,10 @@ namespace GLaDE.EditorTools
             float half = 5.5f, h = 3.2f;
             foreach (var (pos, scale) in new[]
             {
-                (new Vector3(0, h / 2, half), new Vector3(half * 2, h, 0.1f)),
-                (new Vector3(0, h / 2, -half), new Vector3(half * 2, h, 0.1f)),
-                (new Vector3(half, h / 2, 0), new Vector3(0.1f, h, half * 2)),
-                (new Vector3(-half, h / 2, 0), new Vector3(0.1f, h, half * 2)),
+                (new Vector3(0, h / 2, half), new Vector3(half * 2, h, 0.4f)),
+                (new Vector3(0, h / 2, -half), new Vector3(half * 2, h, 0.4f)),
+                (new Vector3(half, h / 2, 0), new Vector3(0.4f, h, half * 2)),
+                (new Vector3(-half, h / 2, 0), new Vector3(0.4f, h, half * 2)),
             })
             {
                 var wall = GameObject.CreatePrimitive(PrimitiveType.Cube);
@@ -472,7 +488,7 @@ namespace GLaDE.EditorTools
                 trim.name = "Trim";
                 trim.transform.SetParent(wall.transform, false);
                 trim.transform.localPosition = new Vector3(0, -0.5f + 0.06f / h, 0);
-                trim.transform.localScale = new Vector3(1.001f, 0.12f / h, 1.6f);
+                trim.transform.localScale = new Vector3(1.001f, 0.12f / h, 1.15f);
                 MeshFactory.SafeDestroy(trim.GetComponent<Collider>());
                 trim.GetComponent<MeshRenderer>().sharedMaterial = trimMat;
             }
