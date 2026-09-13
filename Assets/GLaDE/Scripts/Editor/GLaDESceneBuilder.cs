@@ -363,6 +363,7 @@ namespace GLaDE.EditorTools
                 wall.transform.SetParent(env, false);
                 wall.transform.position = pos; wall.transform.localScale = scale;
                 wall.GetComponent<MeshRenderer>().sharedMaterial = wallMat;
+                wall.GetComponent<MeshRenderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off; // no hard wedge of shadow across the workspace
                 var trim = GameObject.CreatePrimitive(PrimitiveType.Cube);
                 trim.name = "Trim";
                 trim.transform.SetParent(wall.transform, false);
