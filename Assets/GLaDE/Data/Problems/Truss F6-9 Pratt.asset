@@ -1,0 +1,215 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4091890eafa4e4b40aa85fc24e15cea8, type: 3}
+  m_Name: Truss F6-9 Pratt
+  m_EditorClassIdentifier: GLaDE.Runtime::GLaDE.Core.StaticsProblem
+  problemId: F6-9
+  title: "Pratt truss \u2014 forces in KJ, KD and CD"
+  category: 0
+  sourceReference: Hibbeler, Statics, F6-9
+  prompt: 'Determine the force in members <b>KJ</b>, <b>KD</b> and <b>CD</b> of the Pratt truss, and state whether each is in tension or compression.
+
+    Panels are {L} wide and the truss is {h} tall. Loads: P<sub>B</sub> = {P_B}, P<sub>C</sub> = {P_C}, P<sub>D</sub> = {P_D}.'
+  thumbnail: {fileID: 0}
+  sceneName: Problem_Truss
+  kind: 0
+  worldScale: 0.15
+  parameters:
+  - name: L
+    label: Panel length
+    unit: m
+    min: 1.5
+    max: 3
+    step: 0.5
+    defaultValue: 2
+    decimals: 1
+  - name: h
+    label: Truss height
+    unit: m
+    min: 2
+    max: 4
+    step: 0.5
+    defaultValue: 3
+    decimals: 1
+  - name: P_B
+    label: Load at B
+    unit: kN
+    min: 5
+    max: 30
+    step: 5
+    defaultValue: 20
+    decimals: 0
+  - name: P_C
+    label: Load at C
+    unit: kN
+    min: 5
+    max: 30
+    step: 5
+    defaultValue: 20
+    decimals: 0
+  - name: P_D
+    label: Load at D
+    unit: kN
+    min: 5
+    max: 30
+    step: 5
+    defaultValue: 30
+    decimals: 0
+  nodes:
+  - id: A
+    x: 0
+    y: 0
+  - id: B
+    x: L
+    y: 0
+  - id: C
+    x: 2*L
+    y: 0
+  - id: D
+    x: 3*L
+    y: 0
+  - id: E
+    x: 4*L
+    y: 0
+  - id: F
+    x: 5*L
+    y: 0
+  - id: G
+    x: 6*L
+    y: 0
+  - id: L
+    x: L
+    y: h
+  - id: K
+    x: 2*L
+    y: h
+  - id: J
+    x: 3*L
+    y: h
+  - id: I
+    x: 4*L
+    y: h
+  - id: H
+    x: 5*L
+    y: h
+  members:
+  - a: A
+    b: B
+  - a: B
+    b: C
+  - a: C
+    b: D
+  - a: D
+    b: E
+  - a: E
+    b: F
+  - a: F
+    b: G
+  - a: L
+    b: K
+  - a: K
+    b: J
+  - a: J
+    b: I
+  - a: I
+    b: H
+  - a: L
+    b: B
+  - a: K
+    b: C
+  - a: J
+    b: D
+  - a: I
+    b: E
+  - a: H
+    b: F
+  - a: A
+    b: L
+  - a: L
+    b: C
+  - a: K
+    b: D
+  - a: I
+    b: D
+  - a: H
+    b: E
+  - a: G
+    b: H
+  supports:
+  - node: A
+    type: 0
+    reactionAngleDeg: 90
+  - node: G
+    type: 1
+    reactionAngleDeg: 90
+  loads:
+  - id: P_B
+    node: B
+    magnitude: P_B
+    angleDeg: -90
+  - id: P_C
+    node: C
+    magnitude: P_C
+    angleDeg: -90
+  - id: P_D
+    node: D
+    magnitude: P_D
+    angleDeg: -90
+  distributedLoads: []
+  targets:
+  - KJ
+  - KD
+  - CD
+  solutionPlan:
+  - kind: 0
+    title: 
+    teachingNote: 
+    momentAbout: 
+    cutMembers: []
+    keepNode: 
+    equations: []
+    joint: 
+  - kind: 1
+    title: 
+    teachingNote: Why start with the whole truss? A section on the left will carry A's reactions, so we need them first. Summing moments about A is the trick that finds G's reaction in one line.
+    momentAbout: A
+    cutMembers: []
+    keepNode: 
+    equations: []
+    joint: 
+  - kind: 3
+    title: 
+    teachingNote: 'Method of sections in one sentence: cut through the members you want, keep one side, and pick each equation so only one unknown survives. Moments about a point where two unknowns meet is the classic move.'
+    momentAbout: 
+    cutMembers:
+    - KJ
+    - KD
+    - CD
+    keepNode: A
+    equations:
+    - M:D=KJ
+    - Fy=KD
+    - Fx=CD
+    joint: 
+  - kind: 5
+    title: 
+    teachingNote: 
+    momentAbout: 
+    cutMembers: []
+    keepNode: 
+    equations: []
+    joint: 
+  validity:
+    maxForceRatio: 6
+    minAnswerMagnitude: 1
+    minNodeSpacing: 0.5
+    maxAttempts: 64

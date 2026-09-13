@@ -247,10 +247,13 @@ namespace GLaDE.UI{
 				loadingBar.value = progress;
 
 				if (operation.progress >= 0.9f && waitForInput){
-					loadPromptText.text = "Press " + userPromptKey.ToString().ToUpper() + " to continue";
+					loadPromptText.text = userPromptKey != KeyCode.None ? "Press " + userPromptKey.ToString().ToUpper() + " to continue" : "Press any key to continue";
 					loadingBar.value = 1;
 
-					if (Input.GetKeyDown(userPromptKey)){
+					// Continue on the configured key, or on any key/click when no key is set
+					// (the prefab shipped with KeyCode.None, which could never fire).
+					bool pressed = userPromptKey != KeyCode.None ? Input.GetKeyDown(userPromptKey) : Input.anyKeyDown;
+					if (pressed){
 						operation.allowSceneActivation = true;
 					}
                 }else if(operation.progress >= 0.9f && !waitForInput){

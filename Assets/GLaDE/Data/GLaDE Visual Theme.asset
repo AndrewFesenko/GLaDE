@@ -1,0 +1,44 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5613eeb9cc87000489be99069433a72d, type: 3}
+  m_Name: GLaDE Visual Theme
+  m_EditorClassIdentifier: GLaDE.Runtime::GLaDE.Problems.VisualTheme
+  member: {fileID: 2100000, guid: 70f17048dcf86a84991eece6fe21552f, type: 2}
+  joint: {fileID: 2100000, guid: f08868ad60a4e0641abb35409314ee84, type: 2}
+  support: {fileID: 2100000, guid: 3eb7767ce3e33464883b8f46f93543b6, type: 2}
+  ground: {fileID: 2100000, guid: ba2238c237a156246bdfa3f7812f03cc, type: 2}
+  stand: {fileID: 2100000, guid: 139b88e18c7078442a9ff24efa06093f, type: 2}
+  memberHighlight: {fileID: 2100000, guid: 516fb824af278f4439ed65a4f05162d5, type: 2}
+  memberCut: {fileID: 2100000, guid: 51a8d5c77ad960c4492ab6a9333784f8, type: 2}
+  memberGhost: {fileID: 2100000, guid: b7ca4945d6eca164ca57b516ee148fcd, type: 2}
+  memberTension: {fileID: 2100000, guid: 600a8944246cda0448e111c412572662, type: 2}
+  memberCompression: {fileID: 2100000, guid: 476307b9936018649843da8b0d683921, type: 2}
+  memberZero: {fileID: 2100000, guid: e5fe8b06e6b9f2c468f0dee4ae1983ed, type: 2}
+  loadArrow: {fileID: 2100000, guid: 29d889c1a42666d4fa28664a675eb032, type: 2}
+  reactionArrow: {fileID: 2100000, guid: d6fa02bed15b120478e36239ee50d334, type: 2}
+  tokenIdle: {fileID: 2100000, guid: 960aeda3ae72b624d8ba7c3b5c5814b6, type: 2}
+  tokenPlaced: {fileID: 2100000, guid: 52b621efd4ae55d4ea9d2770883b62f8, type: 2}
+  socketHint: {fileID: 2100000, guid: d3c0f52be9fdf0a45acce126efd86c34, type: 2}
+  sectionPlane: {fileID: 2100000, guid: dca4c11f0a18aa14b8cd1da675a93765, type: 2}
+  sectionPlaneActive: {fileID: 2100000, guid: 00e1b81076181784fb6f4a81938bf581, type: 2}
+  whiteboardSurface: {fileID: 2100000, guid: 722fb8a6edf3d824fa3710862bd0f15f, type: 2}
+  whiteboardFrame: {fileID: 2100000, guid: deb4566c0bcfb394da7e79d17acca2ae, type: 2}
+  memberRadius: 0.018
+  jointRadius: 0.032
+  arrowShaftRadius: 0.012
+  arrowMinLength: 0.16
+  arrowMaxLength: 0.34
+  labelSize: 0.06
+  labelColor: {r: 0.95, g: 0.95, b: 0.97, a: 1}
+  loadLabelColor: {r: 1, g: 0.55, b: 0.35, a: 1}
+  reactionLabelColor: {r: 0.45, g: 0.85, b: 1, a: 1}
+  dimensionColor: {r: 0.75, g: 0.8, b: 0.9, a: 1}

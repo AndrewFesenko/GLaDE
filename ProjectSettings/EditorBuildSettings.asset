@@ -5,9 +5,12 @@ EditorBuildSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 2
   m_Scenes:
-  - enabled: 0
-    path: Assets/Scenes/SampleScene.unity
-    guid: 99c9720ab356a0642a771bea13969a05
+  - enabled: 1
+    path: Assets/GLaDE/Scenes/Hub.unity
+    guid: ada8e47a312d85841a034030b051ba0c
+  - enabled: 1
+    path: Assets/GLaDE/Scenes/Problem_Truss.unity
+    guid: 322662e5c36fb094a96e639c30747dc7
   - enabled: 1
     path: Assets/Scenes/MainMenu.unity
     guid: bc0ea2be1cbd1ff4096117575b70aa06
@@ -15,13 +18,10 @@ EditorBuildSettings:
     path: Assets/Scenes/HomeScreen.unity
     guid: 70e7c9e4c112cf74fa9bf17eb69f610f
   - enabled: 1
-    path: Assets/Scenes/Demo3Scene2.unity
-    guid: bcb6334c5696d824bb16fc445a31966a
-  - enabled: 1
     path: Assets/Scenes/AboutGlade.unity
     guid: f59f25d450b7cc64ebce7b7c1230073e
-  - enabled: 1
-    path: Assets/Scenes/Problems/TrussScene.unity
-    guid: d6700da2ad4136043a0338d6b9822c45
   m_configObjects:
+    com.unity.dt.app-ui: {fileID: 11400000, guid: 1b1c20d82303e4b5781c3ef50ac1449f, type: 2}
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
+    com.unity.xr.management.loader_settings: {fileID: 11400000, guid: 8175faf25b2ee8847bb386d4e1311ac6, type: 2}
+    com.unity.xr.openxr.settings4: {fileID: 11400000, guid: 53e63cea02aff524786a71b656f78354, type: 2}

@@ -1,0 +1,23 @@
+{
+    "name": "GLaDE.Editor",
+    "rootNamespace": "GLaDE.EditorTools",
+    "references": [
+        "GLaDE.Runtime",
+        "Unity.TextMeshPro",
+        "Unity.InputSystem",
+        "Unity.XR.Interaction.Toolkit",
+        "Unity.XR.CoreUtils",
+        "Unity.RenderPipelines.Universal.Runtime"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

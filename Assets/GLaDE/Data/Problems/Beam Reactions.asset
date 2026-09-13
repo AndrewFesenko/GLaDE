@@ -1,0 +1,138 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4091890eafa4e4b40aa85fc24e15cea8, type: 3}
+  m_Name: Beam Reactions
+  m_EditorClassIdentifier: GLaDE.Runtime::GLaDE.Core.StaticsProblem
+  problemId: F5-Beam
+  title: "Simply supported beam \u2014 support reactions"
+  category: 1
+  sourceReference: Hibbeler, Statics, ch. 5 (fundamental problem style)
+  prompt: 'The beam is pinned at <b>A</b> and rests on a roller at <b>B</b>. A uniform load of {w} acts from A to the midpoint D, and a concentrated load P = {P} acts at C, {a} from A.
+
+    Determine the horizontal and vertical components of reaction at the pin A and the reaction at the roller B.'
+  thumbnail: {fileID: 0}
+  sceneName: Problem_Beam
+  kind: 1
+  worldScale: 0.22
+  parameters:
+  - name: L
+    label: Beam length
+    unit: m
+    min: 6
+    max: 10
+    step: 1
+    defaultValue: 8
+    decimals: 1
+  - name: a
+    label: Position of P from A
+    unit: m
+    min: 2
+    max: 7
+    step: 1
+    defaultValue: 6
+    decimals: 1
+  - name: w
+    label: Distributed load
+    unit: kN/m
+    min: 1
+    max: 5
+    step: 1
+    defaultValue: 2
+    decimals: 1
+  - name: P
+    label: Point load
+    unit: kN
+    min: 5
+    max: 20
+    step: 5
+    defaultValue: 10
+    decimals: 0
+  nodes:
+  - id: A
+    x: 0
+    y: 0
+  - id: D
+    x: L/2
+    y: 0
+  - id: C
+    x: min(a, L-1)
+    y: 0
+  - id: B
+    x: L
+    y: 0
+  members:
+  - a: A
+    b: D
+  - a: D
+    b: C
+  - a: C
+    b: B
+  supports:
+  - node: A
+    type: 0
+    reactionAngleDeg: 90
+  - node: B
+    type: 1
+    reactionAngleDeg: 90
+  loads:
+  - id: P
+    node: C
+    magnitude: P
+    angleDeg: -90
+  distributedLoads:
+  - id: w
+    nodeA: A
+    nodeB: D
+    intensityA: w
+    intensityB: w
+  targets:
+  - Ax
+  - Ay
+  - By
+  solutionPlan:
+  - kind: 0
+    title: 
+    teachingNote: 
+    momentAbout: 
+    cutMembers: []
+    keepNode: 
+    equations: []
+    joint: 
+  - kind: 2
+    title: 
+    teachingNote: 
+    momentAbout: 
+    cutMembers: []
+    keepNode: 
+    equations: []
+    joint: 
+  - kind: 1
+    title: 
+    teachingNote: 'Moments about the pin is the standard opening: both of A''s unknown components vanish from the equation, leaving only the roller reaction.'
+    momentAbout: A
+    cutMembers: []
+    keepNode: 
+    equations: []
+    joint: 
+  - kind: 5
+    title: 
+    teachingNote: 
+    momentAbout: 
+    cutMembers: []
+    keepNode: 
+    equations: []
+    joint: 
+  validity:
+    maxForceRatio: 6
+    minAnswerMagnitude: 1
+    minNodeSpacing: 0.9
+    maxAttempts: 64
