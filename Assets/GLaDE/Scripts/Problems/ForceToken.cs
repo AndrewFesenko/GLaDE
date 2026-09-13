@@ -27,12 +27,16 @@ namespace GLaDE.Problems
 
         public static ForceToken Create(string name, VisualTheme theme, Transform parent, Vector3 localPos)
         {
+            // Built while inactive: XRGrabInteractable collects its colliders when it wakes up, so the
+            // capsule must exist before the object is enabled or the token can never be grabbed.
             var go = new GameObject(name);
+            go.SetActive(false);
             go.transform.SetParent(parent, false);
             go.transform.localPosition = localPos;
             var token = go.AddComponent<ForceToken>();
             token.theme = theme;
             token.BuildVisual();
+            go.SetActive(true);
             token.SetHome();
             return token;
         }
@@ -51,6 +55,8 @@ namespace GLaDE.Problems
             attach.SetParent(transform, false);
 
             grab = GetComponent<XRGrabInteractable>();
+            grab.colliders.Clear();
+            grab.colliders.Add(col);
             grab.attachTransform = attach;
             grab.useDynamicAttach = false;
             grab.movementType = XRBaseInteractable.MovementType.VelocityTracking;

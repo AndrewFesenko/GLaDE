@@ -36,24 +36,33 @@ namespace GLaDE.EditorTools
         static readonly Vector3 BoardPos = new Vector3(1.85f, 1.5f, 0.55f);
         static readonly Vector3 DeskPos = new Vector3(-1.35f, 0f, 0.15f);      // desk centre on the floor
         static readonly Vector3 PlanePos = new Vector3(-0.85f, 1.35f, 0.45f);
+        static readonly Vector3 NotepadPos = new Vector3(-1.85f, 1.5f, 0.55f);
 
         [MenuItem("GLaDE/Build Everything", priority = 0)]
         public static void BuildAll()
         {
             var theme = CreateTheme();
-            ProblemAssetFactory.CreateAll();
-            // Freshly saved assets are not reliably loadable in the same editor tick (the reimport lands next
-            // frame), so build the scenes one tick later from the paths.
-            EditorApplication.delayCall += () =>
+            // Re-authoring the problem assets triggers a reimport that makes them unloadable for a while, so
+            // only create them when missing. Use GLaDE > Create Problem Assets after editing the factory.
+            bool haveAssets = AssetDatabase.LoadAssetAtPath<StaticsProblem>(ProblemAssetFactory.TrussAssetPath) != null
+                           && AssetDatabase.LoadAssetAtPath<StaticsProblem>(ProblemAssetFactory.BeamAssetPath) != null;
+            if (haveAssets) BuildScenes(theme);
+            else
             {
-                var truss = LoadProblem(ProblemAssetFactory.TrussAssetPath);
-                var beam = LoadProblem(ProblemAssetFactory.BeamAssetPath);
-                BuildProblemScene(truss, theme);
-                BuildProblemScene(beam, theme);
-                BuildHubScene(theme);
-                UpdateBuildSettings();
-                Debug.Log("[GLaDE] Build Everything finished.");
-            };
+                ProblemAssetFactory.CreateAll();
+                EditorApplication.delayCall += () => BuildScenes(theme);   // let the new assets import first
+            }
+        }
+
+        static void BuildScenes(VisualTheme theme)
+        {
+            var truss = LoadProblem(ProblemAssetFactory.TrussAssetPath);
+            var beam = LoadProblem(ProblemAssetFactory.BeamAssetPath);
+            BuildProblemScene(truss, theme);
+            BuildProblemScene(beam, theme);
+            BuildHubScene(theme);
+            UpdateBuildSettings();
+            Debug.Log("[GLaDE] Build Everything finished.");
         }
 
         static StaticsProblem LoadProblem(string path)
@@ -63,6 +72,17 @@ namespace GLaDE.EditorTools
             {
                 AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceSynchronousImport);
                 p = AssetDatabase.LoadAssetAtPath<StaticsProblem>(path);
+            }
+            if (p == null)
+            {
+                // Last resort: find it by type and file name.
+                string wanted = System.IO.Path.GetFileName(path);
+                foreach (var guid in AssetDatabase.FindAssets("t:StaticsProblem"))
+                {
+                    string candidate = AssetDatabase.GUIDToAssetPath(guid);
+                    if (System.IO.Path.GetFileName(candidate) == wanted) { p = AssetDatabase.LoadAssetAtPath<StaticsProblem>(candidate); break; }
+                }
+                Debug.LogWarning($"[GLaDE] LoadProblem('{path}') needed the fallback search; found={(p != null)}");
             }
             return p;
         }
@@ -219,6 +239,7 @@ namespace GLaDE.EditorTools
         public static void BuildProblemScene(StaticsProblem problem, VisualTheme theme)
         {
             if (problem == null) { Debug.LogError("[GLaDE] Problem asset missing (null reference passed to BuildProblemScene); run GLaDE/Create Problem Assets first."); return; }
+            Debug.Log("[GLaDE] Building scene for " + problem.name + " -> " + problem.sceneName);
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
             BuildEnvironment(theme);
             BuildXRCore();
@@ -237,27 +258,27 @@ namespace GLaDE.EditorTools
 
             pm.whiteboard = BuildWhiteboard(theme, BoardPos, FaceFrom(BoardPos, PlayerStart + Vector3.up * 1.5f), problemGo.transform, true);
 
-            // Desk: notepad + pen in front, force tokens behind (tokens only appear in guided mode).
+            // Desk for the force tokens (they only appear in guided mode).
             var desk = GameObject.CreatePrimitive(PrimitiveType.Cube);
             desk.name = "Desk";
             desk.transform.SetParent(problemGo.transform, false);
             desk.transform.position = DeskPos + new Vector3(0, 0.41f, 0);
-            desk.transform.localScale = new Vector3(1.2f, 0.82f, 0.9f);
+            desk.transform.localScale = new Vector3(1.1f, 0.82f, 0.5f);
             desk.GetComponent<MeshRenderer>().sharedMaterial = theme.stand;
             float deskTop = 0.82f;
 
-            // Pad pivot is its centre: lift it so the lower edge of the tilted board rests on the desk.
-            BuildNotepad(theme, problemGo.transform, DeskPos + new Vector3(-0.05f, deskTop + 0.23f, -0.14f));
+            // Notepad: a wall board to the left of the problem, mirroring the whiteboard on the right.
+            BuildNotepad(theme, problemGo.transform, NotepadPos, FaceFrom(NotepadPos, PlayerStart + Vector3.up * 1.5f));
 
             var tools = new GameObject("Guided Tools");
             tools.transform.SetParent(problemGo.transform, false);
             pm.toolsRoot = tools;
             var rack = new GameObject("Token Rack").transform;
             rack.SetParent(tools.transform, false);
-            rack.position = DeskPos + new Vector3(0, deskTop + 0.02f, 0.3f);
+            rack.position = DeskPos + new Vector3(0, deskTop + 0.02f, 0f);
             pm.tokenRack = rack;
             var rackSign = MakeWorldLabel(tools.transform, "<b>Force tokens</b>\n<size=70%>Grab one and drop it on a marker; it names itself.</size>",
-                DeskPos + new Vector3(0, deskTop + 0.34f, 0.42f), 0.05f, theme.labelColor);
+                DeskPos + new Vector3(0, deskTop + 0.36f, 0.12f), 0.05f, theme.labelColor);
             rackSign.name = "Rack Sign";
 
             if (problem.kind == StructureKind.Truss)
@@ -289,74 +310,30 @@ namespace GLaDE.EditorTools
             return go;
         }
 
-        static void BuildNotepad(VisualTheme theme, Transform parent, Vector3 pos)
+        /// <summary>Wall-mounted drawing board: point and hold the trigger to write, Clear button on the frame.</summary>
+        static void BuildNotepad(VisualTheme theme, Transform parent, Vector3 pos, Quaternion rot)
         {
-            var padRoot = new GameObject("Notepad");
-            padRoot.transform.SetParent(parent, false);
-            padRoot.transform.position = pos;
-            padRoot.transform.rotation = Quaternion.Euler(62f, 0f, 0f);      // drafting-board tilt: top edge leans away, face toward the player
+            float w = 1.2f, h = 0.95f;
+            var root = BuildBoardShell(theme, pos, rot, parent, w, h, out var canvas, true);
+            root.name = "Notepad Board";
 
-            var backing = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            backing.name = "Backing";
-            MeshFactory.SafeDestroy(backing.GetComponent<Collider>());
-            backing.transform.SetParent(padRoot.transform, false);
-            backing.transform.localPosition = new Vector3(0, 0, 0.008f);
-            backing.transform.localScale = new Vector3(0.66f, 0.50f, 0.012f);
-            backing.GetComponent<MeshRenderer>().sharedMaterial = theme.whiteboardFrame;
-
+            float paperH = h - 0.12f;
             var quad = GameObject.CreatePrimitive(PrimitiveType.Quad);   // MeshCollider gives texture coordinates on hit
             quad.name = "Paper";
-            quad.transform.SetParent(padRoot.transform, false);
-            quad.transform.localRotation = Quaternion.identity;           // a Quad faces -z, which after the tilt is up-and-toward the player
-            quad.transform.localScale = new Vector3(0.62f, 0.46f, 1f);
-            quad.AddComponent<Notepad>();
+            quad.transform.SetParent(root.transform, false);
+            quad.transform.localPosition = new Vector3(0, 0.05f, -0.002f);   // a Quad faces -z: toward the player
+            quad.transform.localScale = new Vector3(w - 0.04f, paperH, 1f);
+            var pad = quad.AddComponent<Notepad>();
+            pad.width = 1200; pad.height = Mathf.RoundToInt(1200 * paperH / (w - 0.04f));
 
-            var sign = MakeWorldLabel(padRoot.transform, "<b>Notepad</b>  <size=70%>write with the pen · touch the red block to erase</size>",
-                pos + new Vector3(0, 0.30f, 0.12f), 0.045f, theme.labelColor);
-            sign.name = "Pad Sign";
-
-            // Pen: a slim cylinder with a tip, lying on the desk to the right of the pad.
-            var pen = new GameObject("Pen");
-            pen.transform.SetParent(parent, false);
-            pen.transform.position = pos + new Vector3(0.42f, 0.02f, 0.02f);
-            pen.transform.rotation = Quaternion.Euler(0, 0, 90f);
-            var body = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-            body.name = "Body";
-            MeshFactory.SafeDestroy(body.GetComponent<Collider>());
-            body.transform.SetParent(pen.transform, false);
-            body.transform.localPosition = new Vector3(0, 0.075f, 0);
-            body.transform.localScale = new Vector3(0.016f, 0.07f, 0.016f);
-            body.GetComponent<MeshRenderer>().sharedMaterial = theme.tokenIdle;
-            var tipGo = new GameObject("Tip");
-            tipGo.transform.SetParent(pen.transform, false);
-            tipGo.transform.localPosition = Vector3.zero;
-            tipGo.transform.localRotation = Quaternion.Euler(180f, 0, 0);    // tip's up points out of the pen along -y
-            var tipVis = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            tipVis.name = "Tip Visual";
-            MeshFactory.SafeDestroy(tipVis.GetComponent<Collider>());
-            tipVis.transform.SetParent(tipGo.transform, false);
-            tipVis.transform.localScale = Vector3.one * 0.012f;
-            tipVis.GetComponent<MeshRenderer>().sharedMaterial = theme.memberCompression;
-            var penCol = pen.AddComponent<CapsuleCollider>();
-            penCol.direction = 1; penCol.radius = 0.014f; penCol.height = 0.17f; penCol.center = new Vector3(0, 0.075f, 0);
-            var rb = pen.AddComponent<Rigidbody>();
-            rb.mass = 0.05f; rb.interpolation = RigidbodyInterpolation.Interpolate; rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
-            var grab = pen.AddComponent<XRGrabInteractable>();
-            grab.movementType = XRBaseInteractable.MovementType.Instantaneous;
-            grab.useDynamicAttach = true;
-            grab.throwOnDetach = false;
-            var penScript = pen.AddComponent<Pen>();
-            penScript.tip = tipGo.transform;
-
-            // Eraser block
-            var eraser = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            eraser.name = "Eraser";
-            eraser.transform.SetParent(parent, false);
-            eraser.transform.position = pos + new Vector3(0.42f, 0.03f, -0.12f);
-            eraser.transform.localScale = new Vector3(0.06f, 0.04f, 0.06f);
-            eraser.GetComponent<MeshRenderer>().sharedMaterial = theme.memberCompression;
-            eraser.AddComponent<XRSimpleInteractable>();
-            eraser.AddComponent<NotepadEraser>().notepad = quad.GetComponent<Notepad>();
+            var title = UIKit.MakeText(canvas, "Title", "<b>Notepad</b>   <size=75%>point at the paper and hold the trigger to write</size>", 24, TextAlignmentOptions.MidlineLeft,
+                new Vector2(0f, 0f), new Vector2(30, 14), new Vector2(w * 1000f - 260, 60));
+            title.color = theme.labelColor;
+            var clear = UIKit.MakeButton(canvas, "Clear", "Clear", 24, new Vector2(170, 56), UIKit.WarnColor);
+            var crt = clear.GetComponent<RectTransform>();
+            crt.anchorMin = new Vector2(1f, 0f); crt.anchorMax = new Vector2(1f, 0f); crt.pivot = new Vector2(1f, 0f);
+            crt.anchoredPosition = new Vector2(-30, 16);
+            UnityEventTools.AddPersistentListener(clear.onClick, pad.Clear);
         }
 
         public static void BuildHubScene(VisualTheme theme)
@@ -556,6 +533,8 @@ namespace GLaDE.EditorTools
                 var rb = root.AddComponent<Rigidbody>();
                 rb.isKinematic = true; rb.useGravity = false;
                 var grab = root.AddComponent<XRGrabInteractable>();
+                grab.colliders.Clear();
+                grab.colliders.Add(barCol);   // only the bar grabs the board; the paper below has its own interactable
                 grab.movementType = XRBaseInteractable.MovementType.Instantaneous;
                 grab.useDynamicAttach = true;
                 grab.throwOnDetach = false;
@@ -564,7 +543,7 @@ namespace GLaDE.EditorTools
                 var label = MakeWorldLabel(root.transform, "<size=70%>grab bar: move the board</size>", root.transform.TransformPoint(new Vector3(0, height * 0.5f + 0.14f, 0)), 0.04f, theme.dimensionColor);
                 label.name = "Bar Sign";
                 MeshFactory.SafeDestroy(label.GetComponent<Billboard>());
-                label.transform.localRotation = Quaternion.Euler(0, 180f, 0);
+                label.transform.localRotation = Quaternion.identity;   // TMP text reads correctly from the board's front (-z) side
             }
             return root;
         }
