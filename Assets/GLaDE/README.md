@@ -12,9 +12,20 @@ Every attempt draws new numbers, so the method is what gets learned, not the ans
   key map; the mouse and keyboard drive the head and controllers.
 * **Headset:** OpenXR is configured for Standalone and Android with the Meta Touch / Touch Pro / Touch
   Plus and Khronos simple controller profiles. Install the Android Build Support module for Quest builds.
-* **Whiteboard shortcuts (desktop testing):** Space / → next step, ← back, H hint, N new problem.
+* **Controls:** point + trigger presses buttons and writes on the notepad (hold to draw); grip grabs
+  the section plane, force tokens, a truss half, the beam, and the green bar on top of any board.
+* **Whiteboard shortcuts (desktop testing):** Space / → next step, ← back, H hint, G guide me, N new problem.
 
-Build order: `Hub` → `Problem_Truss` → `Problem_Beam`, then the legacy desktop menu scenes.
+Build order: `Hub` → `Problem_Truss` → `Problem_Beam`. The Hub is the only entry point.
+
+## What a student sees
+
+1. **Homework.** The problem, a wall notepad for working, and an answer sheet with a keypad. Check grades
+   each row with a small tolerance and says what kind of slip it was. All correct ends the problem unaided
+   and colours the members (blue tension, red compression).
+2. **Guide me** (or a hint) brings out the tools and walks through the decomposition below. Back to answers
+   returns to the sheet at any point, keeping typed values. Progress per problem (solved unaided, guided
+   runs, checks) is stored in PlayerPrefs and shown on the hub cards.
 
 ## Architecture (Assets/GLaDE)
 
