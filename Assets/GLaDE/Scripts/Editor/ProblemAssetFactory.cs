@@ -35,6 +35,14 @@ namespace GLaDE.EditorTools
             lib.problems = new List<StaticsProblem> { truss, beam };
             EditorUtility.SetDirty(truss); EditorUtility.SetDirty(beam); EditorUtility.SetDirty(lib);
             AssetDatabase.SaveAssets();
+            // Saving re-imports the assets, which can invalidate the in-memory objects; reload them by path.
+            AssetDatabase.ImportAsset(TrussAssetPath, ImportAssetOptions.ForceSynchronousImport);
+            AssetDatabase.ImportAsset(BeamAssetPath, ImportAssetOptions.ForceSynchronousImport);
+            AssetDatabase.ImportAsset(LibraryPath, ImportAssetOptions.ForceSynchronousImport);
+            truss = AssetDatabase.LoadAssetAtPath<StaticsProblem>(TrussAssetPath);
+            beam = AssetDatabase.LoadAssetAtPath<StaticsProblem>(BeamAssetPath);
+            lib = AssetDatabase.LoadAssetAtPath<ProblemLibrary>(LibraryPath);
+            if (truss == null || beam == null) Debug.LogWarning($"[GLaDE] Problem asset reload failed (truss={(truss != null)}, beam={(beam != null)}).");
             Debug.Log("[GLaDE] Problem assets created/updated.");
             return new Created { truss = truss, beam = beam, library = lib };
         }
@@ -73,7 +81,7 @@ namespace GLaDE.EditorTools
                      + "Panels are {L} wide and the truss is {h} tall. Loads: P<sub>B</sub> = {P_B}, P<sub>C</sub> = {P_C}, P<sub>D</sub> = {P_D}.";
             p.sceneName = "Problem_Truss";
             p.kind = StructureKind.Truss;
-            p.worldScale = 0.15f;
+            p.worldScale = 0.12f;   // 18 m truss spans 2.16 m in the room, clear of the whiteboard
             p.parameters = new List<ParameterDef>
             {
                 P("L", "Panel length", "m", 1.5f, 3f, 0.5f, 2f),

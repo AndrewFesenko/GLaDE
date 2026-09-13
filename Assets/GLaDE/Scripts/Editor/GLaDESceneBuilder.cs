@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Linq;
 using GLaDE.Core;
 using GLaDE.Problems;
 using TMPro;
@@ -9,10 +8,9 @@ using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.Rendering;
-using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using UnityEngine.XR.Interaction.Toolkit;
-using UnityEngine.XR.Interaction.Toolkit.Interactors;
+using UnityEngine.XR.Interaction.Toolkit.Interactables;
 using UnityEngine.XR.Interaction.Toolkit.Locomotion.Teleportation;
 using UnityEngine.XR.Interaction.Toolkit.UI;
 
@@ -29,29 +27,35 @@ namespace GLaDE.EditorTools
         public const string ScenesFolder = "Assets/GLaDE/Scenes";
         public const string MaterialsFolder = "Assets/GLaDE/Materials";
         public const string ThemePath = "Assets/GLaDE/Data/GLaDE Visual Theme.asset";
+        public const string FontAssetPath = "Assets/GLaDE/Fonts/GLaDE Sans SDF.asset";
         public const string HubSceneName = "Hub";
 
+        // Room layout (metres). Player faces +z.
         static readonly Vector3 PlayerStart = new Vector3(0f, 0f, -1.0f);
-        static readonly Vector3 StructurePos = new Vector3(0f, 1.05f, 0.75f);
-        static readonly Vector3 BoardPos = new Vector3(1.55f, 1.45f, 0.35f);
-        static readonly Vector3 TablePos = new Vector3(-1.25f, 0f, 0.35f);
-        static readonly Vector3 PlanePos = new Vector3(-0.85f, 1.35f, 0.35f);
+        static readonly Vector3 StructurePos = new Vector3(0f, 1.05f, 0.85f);
+        static readonly Vector3 BoardPos = new Vector3(1.85f, 1.5f, 0.55f);
+        static readonly Vector3 DeskPos = new Vector3(-1.35f, 0f, 0.15f);      // desk centre on the floor
+        static readonly Vector3 PlanePos = new Vector3(-0.85f, 1.35f, 0.45f);
 
         [MenuItem("GLaDE/Build Everything", priority = 0)]
         public static void BuildAll()
         {
             var theme = CreateTheme();
-            var created = ProblemAssetFactory.CreateAll();
-            var truss = created.truss != null ? created.truss : LoadProblem(ProblemAssetFactory.TrussAssetPath);
-            var beam = created.beam != null ? created.beam : LoadProblem(ProblemAssetFactory.BeamAssetPath);
-            BuildProblemScene(truss, theme);
-            BuildProblemScene(beam, theme);
-            BuildHubScene(theme);
-            UpdateBuildSettings();
-            Debug.Log("[GLaDE] Build Everything finished.");
+            ProblemAssetFactory.CreateAll();
+            // Freshly saved assets are not reliably loadable in the same editor tick (the reimport lands next
+            // frame), so build the scenes one tick later from the paths.
+            EditorApplication.delayCall += () =>
+            {
+                var truss = LoadProblem(ProblemAssetFactory.TrussAssetPath);
+                var beam = LoadProblem(ProblemAssetFactory.BeamAssetPath);
+                BuildProblemScene(truss, theme);
+                BuildProblemScene(beam, theme);
+                BuildHubScene(theme);
+                UpdateBuildSettings();
+                Debug.Log("[GLaDE] Build Everything finished.");
+            };
         }
 
-        /// <summary>Loads a problem asset, forcing a synchronous import if it was just written.</summary>
         static StaticsProblem LoadProblem(string path)
         {
             var p = AssetDatabase.LoadAssetAtPath<StaticsProblem>(path);
@@ -72,17 +76,14 @@ namespace GLaDE.EditorTools
         [MenuItem("GLaDE/Build Hub Scene", priority = 3)]
         public static void BuildHub() => BuildHubScene(CreateTheme());
 
-        // ------------------------------------------------------------------ materials & theme
+        // ------------------------------------------------------------------ font, materials & theme
 
         /// <summary>
-        /// The bundled LiberationSans atlas is static (ASCII + Latin-1). Equations use Greek sigma, arrows and dashes,
-        /// so switch it to dynamic population and let it grow extra atlas pages at runtime.
+        /// The bundled LiberationSans atlas is static (ASCII + Latin-1). Equations use Greek sigma, arrows and
+        /// dashes, so the project uses its own dynamic font asset and makes it the TextMeshPro default.
         /// </summary>
-        public const string FontAssetPath = "Assets/GLaDE/Fonts/GLaDE Sans SDF.asset";
-
         public static void EnsureDynamicFont()
         {
-            // Put the bundled static atlas back the way TMP ships it.
             var liberation = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>("Assets/TextMesh Pro/Resources/Fonts & Materials/LiberationSans SDF.asset");
             if (liberation != null && liberation.atlasPopulationMode != AtlasPopulationMode.Static)
             {
@@ -110,7 +111,6 @@ namespace GLaDE.EditorTools
                 Debug.Log("[GLaDE] Created dynamic font asset " + FontAssetPath);
             }
 
-            // Make it the project-wide default so every label and UI text gets Greek, arrows and dashes.
             var settings = TMP_Settings.instance;
             if (settings != null && font != null)
             {
@@ -222,7 +222,7 @@ namespace GLaDE.EditorTools
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
             BuildEnvironment(theme);
             BuildXRCore();
-            var rig = BuildRig(PlayerStart, Quaternion.identity);
+            BuildRig(PlayerStart, Quaternion.identity);
 
             var problemGo = new GameObject("Problem");
             var pm = problemGo.AddComponent<ProblemManager>();
@@ -237,28 +237,126 @@ namespace GLaDE.EditorTools
 
             pm.whiteboard = BuildWhiteboard(theme, BoardPos, FaceFrom(BoardPos, PlayerStart + Vector3.up * 1.5f), problemGo.transform, true);
 
-            // Token table
-            var table = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            table.name = "Token Table";
-            table.transform.SetParent(problemGo.transform, false);
-            table.transform.position = TablePos + new Vector3(0, 0.42f, 0);
-            table.transform.localScale = new Vector3(1.0f, 0.84f, 0.42f);
-            table.GetComponent<MeshRenderer>().sharedMaterial = theme.stand;
+            // Desk: notepad + pen in front, force tokens behind (tokens only appear in guided mode).
+            var desk = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            desk.name = "Desk";
+            desk.transform.SetParent(problemGo.transform, false);
+            desk.transform.position = DeskPos + new Vector3(0, 0.41f, 0);
+            desk.transform.localScale = new Vector3(1.2f, 0.82f, 0.9f);
+            desk.GetComponent<MeshRenderer>().sharedMaterial = theme.stand;
+            float deskTop = 0.82f;
+
+            // Pad pivot is its centre: lift it so the lower edge of the tilted board rests on the desk.
+            BuildNotepad(theme, problemGo.transform, DeskPos + new Vector3(-0.05f, deskTop + 0.23f, -0.14f));
+
+            var tools = new GameObject("Guided Tools");
+            tools.transform.SetParent(problemGo.transform, false);
+            pm.toolsRoot = tools;
             var rack = new GameObject("Token Rack").transform;
-            rack.SetParent(problemGo.transform, false);
-            rack.position = TablePos + new Vector3(0, 0.86f, 0);
+            rack.SetParent(tools.transform, false);
+            rack.position = DeskPos + new Vector3(0, deskTop + 0.02f, 0.3f);
             pm.tokenRack = rack;
+            var rackSign = MakeWorldLabel(tools.transform, "<b>Force tokens</b>\n<size=70%>Grab one and drop it on a marker; it names itself.</size>",
+                DeskPos + new Vector3(0, deskTop + 0.34f, 0.42f), 0.05f, theme.labelColor);
+            rackSign.name = "Rack Sign";
 
             if (problem.kind == StructureKind.Truss)
             {
-                var plane = SectionPlane.Create(theme, sv, problemGo.transform, PlanePos, Quaternion.Euler(0, 90, 0));
+                var plane = SectionPlane.Create(theme, sv, tools.transform, PlanePos, Quaternion.Euler(0, 90, 0));
                 pm.sectionPlane = plane;
+                var planeSign = MakeWorldLabel(plane.transform, "<b>Section plane</b>\n<size=70%>Grab me. Slide me through the members you need.</size>",
+                    PlanePos + new Vector3(0, plane.height * 0.5f + 0.08f, 0), 0.05f, theme.labelColor);
+                planeSign.name = "Plane Sign";
             }
 
             EditorSceneManager.MarkSceneDirty(scene);
             string path = $"{ScenesFolder}/{problem.sceneName}.unity";
             EditorSceneManager.SaveScene(scene, path);
             Debug.Log($"[GLaDE] Built {path}");
+        }
+
+        static GameObject MakeWorldLabel(Transform parent, string text, Vector3 worldPos, float sizeMetres, Color color)
+        {
+            var go = new GameObject("Label");
+            go.transform.SetParent(parent, true);
+            go.transform.position = worldPos;
+            var tmp = go.AddComponent<TextMeshPro>();
+            tmp.text = text; tmp.fontSize = sizeMetres * 10f; tmp.color = color;
+            tmp.alignment = TextAlignmentOptions.Center;
+            tmp.textWrappingMode = TextWrappingModes.NoWrap;
+            tmp.rectTransform.sizeDelta = new Vector2(2f, 0.5f);
+            go.AddComponent<Billboard>();
+            return go;
+        }
+
+        static void BuildNotepad(VisualTheme theme, Transform parent, Vector3 pos)
+        {
+            var padRoot = new GameObject("Notepad");
+            padRoot.transform.SetParent(parent, false);
+            padRoot.transform.position = pos;
+            padRoot.transform.rotation = Quaternion.Euler(62f, 0f, 0f);      // drafting-board tilt: top edge leans away, face toward the player
+
+            var backing = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            backing.name = "Backing";
+            MeshFactory.SafeDestroy(backing.GetComponent<Collider>());
+            backing.transform.SetParent(padRoot.transform, false);
+            backing.transform.localPosition = new Vector3(0, 0, 0.008f);
+            backing.transform.localScale = new Vector3(0.66f, 0.50f, 0.012f);
+            backing.GetComponent<MeshRenderer>().sharedMaterial = theme.whiteboardFrame;
+
+            var quad = GameObject.CreatePrimitive(PrimitiveType.Quad);   // MeshCollider gives texture coordinates on hit
+            quad.name = "Paper";
+            quad.transform.SetParent(padRoot.transform, false);
+            quad.transform.localRotation = Quaternion.identity;           // a Quad faces -z, which after the tilt is up-and-toward the player
+            quad.transform.localScale = new Vector3(0.62f, 0.46f, 1f);
+            quad.AddComponent<Notepad>();
+
+            var sign = MakeWorldLabel(padRoot.transform, "<b>Notepad</b>  <size=70%>write with the pen · touch the red block to erase</size>",
+                pos + new Vector3(0, 0.30f, 0.12f), 0.045f, theme.labelColor);
+            sign.name = "Pad Sign";
+
+            // Pen: a slim cylinder with a tip, lying on the desk to the right of the pad.
+            var pen = new GameObject("Pen");
+            pen.transform.SetParent(parent, false);
+            pen.transform.position = pos + new Vector3(0.42f, 0.02f, 0.02f);
+            pen.transform.rotation = Quaternion.Euler(0, 0, 90f);
+            var body = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            body.name = "Body";
+            MeshFactory.SafeDestroy(body.GetComponent<Collider>());
+            body.transform.SetParent(pen.transform, false);
+            body.transform.localPosition = new Vector3(0, 0.075f, 0);
+            body.transform.localScale = new Vector3(0.016f, 0.07f, 0.016f);
+            body.GetComponent<MeshRenderer>().sharedMaterial = theme.tokenIdle;
+            var tipGo = new GameObject("Tip");
+            tipGo.transform.SetParent(pen.transform, false);
+            tipGo.transform.localPosition = Vector3.zero;
+            tipGo.transform.localRotation = Quaternion.Euler(180f, 0, 0);    // tip's up points out of the pen along -y
+            var tipVis = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            tipVis.name = "Tip Visual";
+            MeshFactory.SafeDestroy(tipVis.GetComponent<Collider>());
+            tipVis.transform.SetParent(tipGo.transform, false);
+            tipVis.transform.localScale = Vector3.one * 0.012f;
+            tipVis.GetComponent<MeshRenderer>().sharedMaterial = theme.memberCompression;
+            var penCol = pen.AddComponent<CapsuleCollider>();
+            penCol.direction = 1; penCol.radius = 0.014f; penCol.height = 0.17f; penCol.center = new Vector3(0, 0.075f, 0);
+            var rb = pen.AddComponent<Rigidbody>();
+            rb.mass = 0.05f; rb.interpolation = RigidbodyInterpolation.Interpolate; rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
+            var grab = pen.AddComponent<XRGrabInteractable>();
+            grab.movementType = XRBaseInteractable.MovementType.Instantaneous;
+            grab.useDynamicAttach = true;
+            grab.throwOnDetach = false;
+            var penScript = pen.AddComponent<Pen>();
+            penScript.tip = tipGo.transform;
+
+            // Eraser block
+            var eraser = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            eraser.name = "Eraser";
+            eraser.transform.SetParent(parent, false);
+            eraser.transform.position = pos + new Vector3(0.42f, 0.03f, -0.12f);
+            eraser.transform.localScale = new Vector3(0.06f, 0.04f, 0.06f);
+            eraser.GetComponent<MeshRenderer>().sharedMaterial = theme.memberCompression;
+            eraser.AddComponent<XRSimpleInteractable>();
+            eraser.AddComponent<NotepadEraser>().notepad = quad.GetComponent<Notepad>();
         }
 
         public static void BuildHubScene(VisualTheme theme)
@@ -270,12 +368,12 @@ namespace GLaDE.EditorTools
 
             var library = AssetDatabase.LoadAssetAtPath<ProblemLibrary>(ProblemAssetFactory.LibraryPath);
             Vector3 boardPos = new Vector3(0f, 1.5f, 1.2f);
-            var board = BuildBoardShell(theme, boardPos, FaceFrom(boardPos, PlayerStart + Vector3.up * 1.5f), null, 1.5f, 1.1f, out var canvas);
+            var board = BuildBoardShell(theme, boardPos, FaceFrom(boardPos, PlayerStart + Vector3.up * 1.5f), null, 1.5f, 1.1f, out var canvas, false);
             board.name = "Hub Board";
 
-            var title = MakeText(canvas, "Title", "<b>GLaDE</b>  ·  Statics Lab", 46, TextAlignmentOptions.Center, new Vector2(0.5f, 1f), new Vector2(0, -60), new Vector2(1400, 80));
+            var title = UIKit.MakeText(canvas, "Title", "<b>GLaDE</b>  ·  Statics Lab", 46, TextAlignmentOptions.Center, new Vector2(0.5f, 1f), new Vector2(0, -60), new Vector2(1400, 80));
             title.color = new Color(1f, 0.85f, 0.45f);
-            var desc = MakeText(canvas, "Description", "", 26, TextAlignmentOptions.Center, new Vector2(0.5f, 1f), new Vector2(0, -140), new Vector2(1300, 90));
+            var desc = UIKit.MakeText(canvas, "Description", "", 26, TextAlignmentOptions.Center, new Vector2(0.5f, 1f), new Vector2(0, -140), new Vector2(1300, 90));
             desc.color = new Color(0.85f, 0.88f, 0.95f);
 
             var container = new GameObject("Problems", typeof(RectTransform), typeof(VerticalLayoutGroup)).GetComponent<RectTransform>();
@@ -285,7 +383,7 @@ namespace GLaDE.EditorTools
             var layout = container.GetComponent<VerticalLayoutGroup>();
             layout.spacing = 18; layout.childControlHeight = false; layout.childControlWidth = true; layout.childForceExpandHeight = false; layout.childAlignment = TextAnchor.UpperCenter;
 
-            var template = MakeButton(container, "Problem Button", "Problem", 30, new Vector2(1000, 120));
+            var template = UIKit.MakeButton(container, "Problem Button", "Problem", 30, new Vector2(1000, 120));
             template.GetComponent<LayoutElement>().preferredHeight = 120;
 
             var hub = board.AddComponent<ProblemHub>();
@@ -321,8 +419,7 @@ namespace GLaDE.EditorTools
             light.intensity = 1.35f;
             light.shadows = LightShadows.Soft;
             light.shadowStrength = 0.55f;
-            // From behind and above the player, so the board's and table's shadows fall away from the work area.
-            lightGo.transform.rotation = Quaternion.Euler(58f, 18f, 0f);
+            lightGo.transform.rotation = Quaternion.Euler(58f, 18f, 0f);   // from behind and above the player
 
             var fill = new GameObject("Fill Light").AddComponent<Light>();
             fill.type = LightType.Directional;
@@ -365,7 +462,7 @@ namespace GLaDE.EditorTools
                 wall.transform.SetParent(env, false);
                 wall.transform.position = pos; wall.transform.localScale = scale;
                 wall.GetComponent<MeshRenderer>().sharedMaterial = wallMat;
-                wall.GetComponent<MeshRenderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off; // no hard wedge of shadow across the workspace
+                wall.GetComponent<MeshRenderer>().shadowCastingMode = ShadowCastingMode.Off;
                 var trim = GameObject.CreatePrimitive(PrimitiveType.Cube);
                 trim.name = "Trim";
                 trim.transform.SetParent(wall.transform, false);
@@ -379,7 +476,7 @@ namespace GLaDE.EditorTools
         static void BuildXRCore()
         {
             new GameObject("XR Interaction Manager", typeof(XRInteractionManager));
-            var es = new GameObject("EventSystem", typeof(EventSystem), typeof(XRUIInputModule));
+            new GameObject("EventSystem", typeof(EventSystem), typeof(XRUIInputModule));
             var sim = new GameObject("Simulator Bootstrap").AddComponent<SimulatorBootstrap>();
             sim.simulatorPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(SimulatorPrefabPath);
             if (sim.simulatorPrefab == null) Debug.LogWarning("[GLaDE] XR Interaction Simulator prefab not found; import the XRI sample.");
@@ -407,9 +504,10 @@ namespace GLaDE.EditorTools
             return Quaternion.LookRotation(d.normalized, Vector3.up);
         }
 
-        // ------------------------------------------------------------------ whiteboard UI
+        // ------------------------------------------------------------------ boards
 
-        static GameObject BuildBoardShell(VisualTheme theme, Vector3 pos, Quaternion rot, Transform parent, float width, float height, out RectTransform canvasRect)
+        /// <summary>Frame, dark surface and a world-space canvas. Optionally a grab bar along the top so the board can be moved.</summary>
+        static GameObject BuildBoardShell(VisualTheme theme, Vector3 pos, Quaternion rot, Transform parent, float width, float height, out RectTransform canvasRect, bool grabbable)
         {
             var root = new GameObject("Board");
             if (parent != null) root.transform.SetParent(parent, false);
@@ -440,112 +538,115 @@ namespace GLaDE.EditorTools
             canvasRect.localScale = Vector3.one * 0.001f;
             canvasRect.localPosition = new Vector3(0, 0, -0.004f);
             canvasGo.GetComponent<CanvasScaler>().dynamicPixelsPerUnit = 3f;
+
+            if (grabbable)
+            {
+                // Grab bar above the board: grab it to move the whole board out of the way (or closer).
+                var bar = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+                bar.name = "Grab Bar";
+                MeshFactory.SafeDestroy(bar.GetComponent<Collider>());
+                bar.transform.SetParent(root.transform, false);
+                bar.transform.localPosition = new Vector3(0, height * 0.5f + 0.07f, 0.02f);
+                bar.transform.localRotation = Quaternion.Euler(0, 0, 90f);
+                bar.transform.localScale = new Vector3(0.05f, width * 0.5f, 0.05f);
+                bar.GetComponent<MeshRenderer>().sharedMaterial = theme.tokenPlaced;
+                var barCol = root.AddComponent<BoxCollider>();
+                barCol.center = new Vector3(0, height * 0.5f + 0.07f, 0.02f);
+                barCol.size = new Vector3(width, 0.09f, 0.09f);
+                var rb = root.AddComponent<Rigidbody>();
+                rb.isKinematic = true; rb.useGravity = false;
+                var grab = root.AddComponent<XRGrabInteractable>();
+                grab.movementType = XRBaseInteractable.MovementType.Instantaneous;
+                grab.useDynamicAttach = true;
+                grab.throwOnDetach = false;
+                grab.retainTransformParent = true;
+                grab.trackRotation = false;   // keep it upright; only reposition
+                var label = MakeWorldLabel(root.transform, "<size=70%>grab bar: move the board</size>", root.transform.TransformPoint(new Vector3(0, height * 0.5f + 0.14f, 0)), 0.04f, theme.dimensionColor);
+                label.name = "Bar Sign";
+                MeshFactory.SafeDestroy(label.GetComponent<Billboard>());
+                label.transform.localRotation = Quaternion.Euler(0, 180f, 0);
+            }
             return root;
         }
 
         static Whiteboard BuildWhiteboard(VisualTheme theme, Vector3 pos, Quaternion rot, Transform parent, bool hubButton)
         {
-            float w = 1.5f, h = 1.1f;
-            var root = BuildBoardShell(theme, pos, rot, parent, w, h, out var canvas);
+            float w = 1.6f, h = 1.25f;
+            var root = BuildBoardShell(theme, pos, rot, parent, w, h, out var canvas, true);
             root.name = "Whiteboard";
             var wb = root.AddComponent<Whiteboard>();
 
-            float W = w * 1000f, H = h * 1000f, margin = 40f;
+            float W = w * 1000f, H = h * 1000f, margin = 36f;
+            float cw = W - 2 * margin;
             float y = -margin;
-            wb.titleText = MakeText(canvas, "Title", "Problem", 38, TextAlignmentOptions.TopLeft, new Vector2(0.5f, 1f), new Vector2(0, y), new Vector2(W - 2 * margin, 56)); y -= 60;
+            wb.titleText = UIKit.MakeText(canvas, "Title", "Problem", 36, TextAlignmentOptions.TopLeft, new Vector2(0.5f, 1f), new Vector2(0, y), new Vector2(cw, 48));
             wb.titleText.color = new Color(1f, 0.85f, 0.45f);
-            wb.promptText = MakeText(canvas, "Prompt", "", 23, TextAlignmentOptions.TopLeft, new Vector2(0.5f, 1f), new Vector2(0, y), new Vector2(W - 2 * margin, 150)); y -= 158;
+            y -= 52;
+            wb.promptText = UIKit.MakeText(canvas, "Prompt", "", 22, TextAlignmentOptions.TopLeft, new Vector2(0.5f, 1f), new Vector2(0, y), new Vector2(cw, 128));
             wb.promptText.color = new Color(0.9f, 0.92f, 0.96f);
+            wb.promptText.enableAutoSizing = true; wb.promptText.fontSizeMin = 15; wb.promptText.fontSizeMax = 22;
+            y -= 134;
 
-            var phaseBg = MakePanel(canvas, "Phase Panel", new Color(0.18f, 0.22f, 0.32f, 0.9f), new Vector2(0.5f, 1f), new Vector2(0, y), new Vector2(W - 2 * margin, 118));
-            wb.phaseText = MakeText(phaseBg, "Phase", "", 22, TextAlignmentOptions.TopLeft, new Vector2(0.5f, 0.5f), new Vector2(0, 0), new Vector2(W - 2 * margin - 30, 100));
+            var phaseBg = UIKit.MakePanel(canvas, "Phase Panel", new Color(0.18f, 0.22f, 0.32f, 0.9f), new Vector2(0.5f, 1f), new Vector2(0, y), new Vector2(cw, 124));
+            wb.phaseText = UIKit.MakeText(phaseBg, "Phase", "", 21, TextAlignmentOptions.TopLeft, new Vector2(0.5f, 1f), new Vector2(0, -8), new Vector2(cw - 30, 90));
             wb.phaseText.color = new Color(0.92f, 0.95f, 1f);
-            wb.progressText = MakeText(phaseBg, "Progress", "", 20, TextAlignmentOptions.BottomRight, new Vector2(1f, 0f), new Vector2(-14, 6), new Vector2(420, 30));
+            wb.phaseText.enableAutoSizing = true; wb.phaseText.fontSizeMin = 14; wb.phaseText.fontSizeMax = 21;
+            wb.progressText = UIKit.MakeText(phaseBg, "Progress", "", 19, TextAlignmentOptions.BottomRight, new Vector2(1f, 0f), new Vector2(-14, 6), new Vector2(420, 28));
             wb.progressText.color = new Color(0.6f, 0.95f, 0.75f);
-            y -= 126;
+            y -= 130;
 
-            wb.feedbackText = MakeText(canvas, "Feedback", "", 22, TextAlignmentOptions.TopLeft, new Vector2(0.5f, 1f), new Vector2(0, y), new Vector2(W - 2 * margin, 84)); y -= 90;
+            wb.feedbackText = UIKit.MakeText(canvas, "Feedback", "", 21, TextAlignmentOptions.TopLeft, new Vector2(0.5f, 1f), new Vector2(0, y), new Vector2(cw, 96));
             wb.feedbackText.color = new Color(1f, 0.78f, 0.4f);
             wb.feedbackText.fontStyle = FontStyles.Italic;
+            wb.feedbackText.enableAutoSizing = true; wb.feedbackText.fontSizeMin = 14; wb.feedbackText.fontSizeMax = 21;
+            y -= 102;
 
-            wb.stepTitleText = MakeText(canvas, "Step Title", "", 27, TextAlignmentOptions.TopLeft, new Vector2(0.5f, 1f), new Vector2(0, y), new Vector2(W - 2 * margin, 40)); y -= 46;
+            // Content area: either the step text or the answer sheet. Ends above the button row.
+            float buttonRow = 74f;
+            float contentH = H - margin - (-y) - buttonRow - margin;
+            var stepArea = new GameObject("Step Area", typeof(RectTransform)).GetComponent<RectTransform>();
+            stepArea.SetParent(canvas, false);
+            stepArea.anchorMin = new Vector2(0.5f, 1f); stepArea.anchorMax = new Vector2(0.5f, 1f); stepArea.pivot = new Vector2(0.5f, 1f);
+            stepArea.anchoredPosition = new Vector2(0, y); stepArea.sizeDelta = new Vector2(cw, contentH);
+            wb.stepArea = stepArea;
+            wb.stepTitleText = UIKit.MakeText(stepArea, "Step Title", "", 26, TextAlignmentOptions.TopLeft, new Vector2(0.5f, 1f), new Vector2(0, 0), new Vector2(cw, 38));
             wb.stepTitleText.color = new Color(0.6f, 0.85f, 1f);
-            float bodyH = H - margin - (-y) - 110;
-            wb.stepBodyText = MakeText(canvas, "Step Body", "", 22, TextAlignmentOptions.TopLeft, new Vector2(0.5f, 1f), new Vector2(0, y), new Vector2(W - 2 * margin, bodyH));
+            wb.stepBodyText = UIKit.MakeText(stepArea, "Step Body", "", 21, TextAlignmentOptions.TopLeft, new Vector2(0.5f, 1f), new Vector2(0, -42), new Vector2(cw, contentH - 42));
             wb.stepBodyText.color = new Color(0.95f, 0.96f, 0.98f);
+            wb.stepBodyText.enableAutoSizing = true; wb.stepBodyText.fontSizeMin = 12; wb.stepBodyText.fontSizeMax = 21;
+
+            var answerRt = new GameObject("Answer Sheet", typeof(RectTransform)).GetComponent<RectTransform>();
+            answerRt.SetParent(canvas, false);
+            answerRt.anchorMin = new Vector2(0.5f, 1f); answerRt.anchorMax = new Vector2(0.5f, 1f); answerRt.pivot = new Vector2(0.5f, 1f);
+            answerRt.anchoredPosition = new Vector2(0, y); answerRt.sizeDelta = new Vector2(cw, contentH);
+            var answerPanel = answerRt.gameObject.AddComponent<AnswerPanel>();
+            answerPanel.container = answerRt;
+            wb.answerPanel = answerPanel;
 
             // Button row along the bottom
             var row = new GameObject("Buttons", typeof(RectTransform), typeof(HorizontalLayoutGroup)).GetComponent<RectTransform>();
             row.SetParent(canvas, false);
             row.anchorMin = new Vector2(0.5f, 0f); row.anchorMax = new Vector2(0.5f, 0f); row.pivot = new Vector2(0.5f, 0f);
-            row.anchoredPosition = new Vector2(0, margin * 0.6f); row.sizeDelta = new Vector2(W - 2 * margin, 74);
+            row.anchoredPosition = new Vector2(0, margin * 0.6f); row.sizeDelta = new Vector2(cw, buttonRow);
             var hl = row.GetComponent<HorizontalLayoutGroup>();
             hl.spacing = 12; hl.childControlWidth = true; hl.childControlHeight = true; hl.childForceExpandWidth = true; hl.childAlignment = TextAnchor.MiddleCenter;
 
-            wb.backButton = MakeButton(row, "Back", "< Back", 22, new Vector2(150, 70));
-            wb.nextButton = MakeButton(row, "Next", "Next step >", 22, new Vector2(190, 70));
-            wb.nextButton.image.color = new Color(0.20f, 0.55f, 0.40f);
-            wb.hintButton = MakeButton(row, "Hint", "Hint", 22, new Vector2(140, 70));
-            wb.skipButton = MakeButton(row, "Skip", "Show me how", 22, new Vector2(190, 70));
-            wb.skipButton.image.color = new Color(0.55f, 0.40f, 0.20f);
-            wb.resetButton = MakeButton(row, "Reset", "Reset", 22, new Vector2(140, 70));
-            wb.newProblemButton = MakeButton(row, "New", "New problem", 22, new Vector2(190, 70));
+            wb.checkButton = UIKit.MakeButton(row, "Check", "Check answers", 22, new Vector2(200, 70), UIKit.AccentColor);
+            wb.guideButton = UIKit.MakeButton(row, "Guide", "Guide me", 22, new Vector2(170, 70), UIKit.WarnColor);
+            wb.backButton = UIKit.MakeButton(row, "Back", "< Back", 22, new Vector2(140, 70));
+            wb.nextButton = UIKit.MakeButton(row, "Next", "Next step >", 22, new Vector2(190, 70), UIKit.AccentColor);
+            wb.hintButton = UIKit.MakeButton(row, "Hint", "Hint", 22, new Vector2(130, 70));
+            wb.skipButton = UIKit.MakeButton(row, "Skip", "Show me how", 22, new Vector2(190, 70), UIKit.WarnColor);
+            wb.reviewButton = UIKit.MakeButton(row, "Review", "Read solution", 22, new Vector2(190, 70));
+            wb.resetButton = UIKit.MakeButton(row, "Reset", "Start over", 22, new Vector2(150, 70));
+            wb.newProblemButton = UIKit.MakeButton(row, "New", "New problem", 22, new Vector2(190, 70));
             if (hubButton)
             {
-                var hub = MakeButton(row, "Problems", "Problems", 22, new Vector2(160, 70));
+                var hub = UIKit.MakeButton(row, "Problems", "Problems", 22, new Vector2(150, 70));
                 var back = root.AddComponent<ReturnToHubButton>();
                 UnityEventTools.AddPersistentListener(hub.onClick, back.Go);
             }
             return wb;
-        }
-
-        static RectTransform MakePanel(RectTransform parent, string name, Color color, Vector2 anchor, Vector2 pos, Vector2 size)
-        {
-            var go = new GameObject(name, typeof(RectTransform), typeof(Image));
-            var rt = go.GetComponent<RectTransform>();
-            rt.SetParent(parent, false);
-            rt.anchorMin = anchor; rt.anchorMax = anchor; rt.pivot = new Vector2(0.5f, anchor.y >= 1f ? 1f : (anchor.y <= 0f ? 0f : 0.5f));
-            rt.anchoredPosition = pos; rt.sizeDelta = size;
-            go.GetComponent<Image>().color = color;
-            return rt;
-        }
-
-        static TextMeshProUGUI MakeText(RectTransform parent, string name, string text, float size, TextAlignmentOptions align, Vector2 anchor, Vector2 pos, Vector2 sizeDelta)
-        {
-            var go = new GameObject(name, typeof(RectTransform), typeof(TextMeshProUGUI));
-            var rt = go.GetComponent<RectTransform>();
-            rt.SetParent(parent, false);
-            rt.anchorMin = anchor; rt.anchorMax = anchor;
-            rt.pivot = new Vector2(anchor.x, anchor.y);
-            rt.anchoredPosition = pos; rt.sizeDelta = sizeDelta;
-            var tmp = go.GetComponent<TextMeshProUGUI>();
-            tmp.text = text; tmp.fontSize = size; tmp.alignment = align;
-            tmp.textWrappingMode = TextWrappingModes.Normal;
-            tmp.richText = true;
-            tmp.raycastTarget = false;
-            return tmp;
-        }
-
-        static Button MakeButton(RectTransform parent, string name, string label, float fontSize, Vector2 size)
-        {
-            var go = new GameObject(name, typeof(RectTransform), typeof(Image), typeof(Button), typeof(LayoutElement));
-            var rt = go.GetComponent<RectTransform>();
-            rt.SetParent(parent, false);
-            rt.sizeDelta = size;
-            go.GetComponent<LayoutElement>().preferredWidth = size.x;
-            go.GetComponent<LayoutElement>().preferredHeight = size.y;
-            var img = go.GetComponent<Image>();
-            img.color = new Color(0.24f, 0.28f, 0.40f);
-            var btn = go.GetComponent<Button>();
-            var colors = btn.colors;
-            colors.highlightedColor = new Color(1.25f, 1.25f, 1.25f);
-            colors.pressedColor = new Color(0.8f, 0.8f, 0.8f);
-            colors.selectedColor = Color.white;
-            btn.colors = colors;
-            var text = MakeText(rt, "Label", label, fontSize, TextAlignmentOptions.Center, new Vector2(0.5f, 0.5f), Vector2.zero, size - new Vector2(12, 8));
-            text.rectTransform.anchorMin = Vector2.zero; text.rectTransform.anchorMax = Vector2.one; text.rectTransform.offsetMin = new Vector2(6, 4); text.rectTransform.offsetMax = new Vector2(-6, -4);
-            text.color = Color.white;
-            return btn;
         }
     }
 }

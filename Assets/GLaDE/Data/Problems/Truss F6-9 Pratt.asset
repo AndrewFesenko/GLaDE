@@ -22,7 +22,7 @@ MonoBehaviour:
   thumbnail: {fileID: 0}
   sceneName: Problem_Truss
   kind: 0
-  worldScale: 0.15
+  worldScale: 0.12
   parameters:
   - name: L
     label: Panel length

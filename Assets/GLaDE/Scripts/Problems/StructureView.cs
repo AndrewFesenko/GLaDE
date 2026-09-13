@@ -443,8 +443,12 @@ namespace GLaDE.Problems
                 t.alpha = ghost ? 0.25f : 1f;
         }
 
-        /// <summary>Remembers a renderer's material while it is ghosted.</summary>
-        public class GhostMemory : MonoBehaviour { public Material original; }
+        /// <summary>Highlights (or restores) every member under a group, e.g. while the player hovers a half.</summary>
+        public void HighlightGroup(Transform group, bool on)
+        {
+            if (group == null) return;
+            foreach (var m in group.GetComponentsInChildren<MemberView>()) m.SetHighlighted(on);
+        }
 
         /// <summary>Slides the discarded half away from the kept half so the cut reads clearly.</summary>
         public void SeparateHalves(HashSet<string> keptNodes, float gap)

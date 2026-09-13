@@ -8,9 +8,9 @@ using UnityEngine.UI;
 namespace GLaDE.Problems
 {
     /// <summary>
-    /// The teaching surface beside the problem. Shows the givens, the current phase instruction, and
-    /// reveals solution steps one at a time with a readable typewriter cadence. Purely presentational:
-    /// the <see cref="ProblemManager"/> decides what to show.
+    /// The teaching surface beside the problem. Shows the givens, the current instruction, the homework
+    /// answer sheet, and reveals solution steps one at a time with a readable typewriter cadence.
+    /// Purely presentational: the <see cref="ProblemManager"/> decides what to show.
     /// </summary>
     public class Whiteboard : MonoBehaviour
     {
@@ -23,19 +23,26 @@ namespace GLaDE.Problems
         public TMP_Text progressText;
         public TMP_Text feedbackText;
 
+        [Header("Panels")]
+        public RectTransform stepArea;
+        public AnswerPanel answerPanel;
+
         [Header("Buttons")]
+        public Button checkButton;
+        public Button guideButton;
         public Button nextButton;
         public Button backButton;
         public Button hintButton;
         public Button skipButton;
         public Button newProblemButton;
         public Button resetButton;
+        public Button reviewButton;
 
         [Header("Reveal")]
         public float charactersPerSecond = 70f;
         public bool keyboardShortcuts = true;
 
-        public event Action NextPressed, BackPressed, HintPressed, SkipPressed, NewProblemPressed, ResetPressed;
+        public event Action CheckPressed, GuidePressed, NextPressed, BackPressed, HintPressed, SkipPressed, NewProblemPressed, ResetPressed, ReviewPressed;
 
         Coroutine reveal;
         Coroutine feedbackFade;
@@ -43,12 +50,20 @@ namespace GLaDE.Problems
 
         void Awake()
         {
-            if (nextButton) nextButton.onClick.AddListener(() => Press(NextPressed));
-            if (backButton) backButton.onClick.AddListener(() => Press(BackPressed));
-            if (hintButton) hintButton.onClick.AddListener(() => Press(HintPressed));
-            if (skipButton) skipButton.onClick.AddListener(() => Press(SkipPressed));
-            if (newProblemButton) newProblemButton.onClick.AddListener(() => Press(NewProblemPressed));
-            if (resetButton) resetButton.onClick.AddListener(() => Press(ResetPressed));
+            Wire(checkButton, () => CheckPressed);
+            Wire(guideButton, () => GuidePressed);
+            Wire(nextButton, () => NextPressed);
+            Wire(backButton, () => BackPressed);
+            Wire(hintButton, () => HintPressed);
+            Wire(skipButton, () => SkipPressed);
+            Wire(newProblemButton, () => NewProblemPressed);
+            Wire(resetButton, () => ResetPressed);
+            Wire(reviewButton, () => ReviewPressed);
+        }
+
+        void Wire(Button b, Func<Action> ev)
+        {
+            if (b) b.onClick.AddListener(() => Press(ev()));
         }
 
         void Press(Action a)
@@ -62,11 +77,14 @@ namespace GLaDE.Problems
             if (!keyboardShortcuts) return;
             var kb = Keyboard.current;
             if (kb == null) return;
-            if (kb.spaceKey.wasPressedThisFrame || kb.rightArrowKey.wasPressedThisFrame) { if (nextButton && nextButton.interactable && nextButton.gameObject.activeInHierarchy) Press(NextPressed); }
-            else if (kb.leftArrowKey.wasPressedThisFrame) { if (backButton && backButton.interactable && backButton.gameObject.activeInHierarchy) Press(BackPressed); }
-            else if (kb.hKey.wasPressedThisFrame) { if (hintButton && hintButton.gameObject.activeInHierarchy) Press(HintPressed); }
-            else if (kb.nKey.wasPressedThisFrame) { Press(NewProblemPressed); }
+            if (kb.spaceKey.wasPressedThisFrame || kb.rightArrowKey.wasPressedThisFrame) { if (Visible(nextButton)) Press(NextPressed); }
+            else if (kb.leftArrowKey.wasPressedThisFrame) { if (Visible(backButton)) Press(BackPressed); }
+            else if (kb.hKey.wasPressedThisFrame) { if (Visible(hintButton)) Press(HintPressed); }
+            else if (kb.gKey.wasPressedThisFrame) { if (Visible(guideButton)) Press(GuidePressed); }
+            else if (kb.nKey.wasPressedThisFrame) { if (Visible(newProblemButton)) Press(NewProblemPressed); }
         }
+
+        static bool Visible(Button b) => b && b.interactable && b.gameObject.activeInHierarchy;
 
         public void SetHeader(string title, string prompt)
         {
@@ -74,17 +92,16 @@ namespace GLaDE.Problems
             if (promptText) promptText.text = prompt;
         }
 
-        public void SetPhase(string text)
+        public void SetPhase(string text) { if (phaseText) phaseText.text = text; }
+        public void SetProgress(string text) { if (progressText) progressText.text = text; }
+
+        /// <summary>Shows the answer sheet instead of the step text.</summary>
+        public void ShowAnswerSheet(bool on)
         {
-            if (phaseText) phaseText.text = text;
+            if (answerPanel) answerPanel.gameObject.SetActive(on);
+            if (stepArea) stepArea.gameObject.SetActive(!on);
         }
 
-        public void SetProgress(string text)
-        {
-            if (progressText) progressText.text = text;
-        }
-
-        /// <summary>Clears the step area (used outside the Solve phase).</summary>
         public void ClearStep()
         {
             StopReveal();
@@ -94,6 +111,7 @@ namespace GLaDE.Problems
 
         public void ShowStep(string title, string body, bool animate = true)
         {
+            ShowAnswerSheet(false);
             StopReveal();
             if (stepTitleText) stepTitleText.text = title;
             if (stepBodyText == null) return;
@@ -131,7 +149,7 @@ namespace GLaDE.Problems
             if (stepBodyText) stepBodyText.maxVisibleCharacters = int.MaxValue;
         }
 
-        /// <summary>Transient message (hints, wrong-cut feedback). Fades after a while unless sticky.</summary>
+        /// <summary>Transient message (hints, feedback). Fades after a while; 0 seconds = sticky.</summary>
         public void ShowFeedback(string text, float seconds = 8f)
         {
             if (feedbackText == null) return;
@@ -150,23 +168,17 @@ namespace GLaDE.Problems
             feedbackText.alpha = 1f;
         }
 
-        public void ConfigureButtons(bool next, bool back, bool hint, bool skip, bool newProblem = true, bool reset = true)
+        /// <summary>Which buttons are visible. Everything not listed is hidden.</summary>
+        public void ConfigureButtons(bool check = false, bool guide = false, bool next = false, bool back = false, bool hint = false,
+            bool skip = false, bool newProblem = false, bool reset = false, bool review = false)
         {
-            Show(nextButton, next); Show(backButton, back); Show(hintButton, hint); Show(skipButton, skip);
-            Show(newProblemButton, newProblem); Show(resetButton, reset);
+            Show(checkButton, check); Show(guideButton, guide); Show(nextButton, next); Show(backButton, back);
+            Show(hintButton, hint); Show(skipButton, skip); Show(newProblemButton, newProblem); Show(resetButton, reset); Show(reviewButton, review);
         }
 
-        static void Show(Button b, bool on)
-        {
-            if (b == null) return;
-            b.gameObject.SetActive(on);
-        }
+        static void Show(Button b, bool on) { if (b) b.gameObject.SetActive(on); }
 
-        public void SetButtonLabel(Button b, string label)
-        {
-            if (b == null) return;
-            var t = b.GetComponentInChildren<TMP_Text>();
-            if (t) t.text = label;
-        }
+        public void SetButtonLabel(Button b, string label) => UIKit.SetLabel(b, label);
+        public void SetButtonEnabled(Button b, bool on) { if (b) b.interactable = on; }
     }
 }

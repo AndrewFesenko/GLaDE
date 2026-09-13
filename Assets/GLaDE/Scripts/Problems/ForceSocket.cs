@@ -40,7 +40,7 @@ namespace GLaDE.Problems
             go.transform.rotation = Quaternion.FromToRotation(Vector3.up, worldDir.normalized);
 
             var trigger = go.AddComponent<SphereCollider>();
-            trigger.isTrigger = true; trigger.radius = 0.06f;
+            trigger.isTrigger = true; trigger.radius = 0.045f;
             var rb = go.AddComponent<Rigidbody>();
             rb.isKinematic = true; rb.useGravity = false;
 
@@ -49,6 +49,7 @@ namespace GLaDE.Problems
             fs.socket = go.GetComponent<XRSocketInteractor>();
             fs.socket.hoverSocketSnapping = true;
             fs.socket.recycleDelayTime = 0.3f;
+            fs.socket.showInteractableHoverMeshes = false;   // otherwise neighbouring sockets paint red ghost copies of each other's tokens
             // Only force tokens may snap in. Without this the socket would grab whatever grabbable it overlaps,
             // including the beam it is attached to.
             var filter = new ForceTokenOnlyFilter();
