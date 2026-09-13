@@ -3301,7 +3301,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 499240ad7429cbe48b173019fffaddbb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ProblemCard
-  sceneName: TrussScene
+  sceneName: Problem_Truss
   category: 0
 --- !u!1 &2006506464
 GameObject:

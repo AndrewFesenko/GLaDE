@@ -12,13 +12,13 @@ EditorBuildSettings:
     path: Assets/GLaDE/Scenes/Problem_Truss.unity
     guid: 322662e5c36fb094a96e639c30747dc7
   - enabled: 1
-    path: Assets/Scenes/MainMenu.unity
+    path: Assets/LegacyMenu/Scenes/MainMenu.unity
     guid: bc0ea2be1cbd1ff4096117575b70aa06
   - enabled: 1
-    path: Assets/Scenes/HomeScreen.unity
+    path: Assets/LegacyMenu/Scenes/HomeScreen.unity
     guid: 70e7c9e4c112cf74fa9bf17eb69f610f
   - enabled: 1
-    path: Assets/Scenes/AboutGlade.unity
+    path: Assets/LegacyMenu/Scenes/AboutGlade.unity
     guid: f59f25d450b7cc64ebce7b7c1230073e
   m_configObjects:
     com.unity.dt.app-ui: {fileID: 11400000, guid: 1b1c20d82303e4b5781c3ef50ac1449f, type: 2}
