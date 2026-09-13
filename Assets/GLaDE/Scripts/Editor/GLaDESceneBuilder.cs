@@ -320,7 +320,9 @@ namespace GLaDE.EditorTools
             light.color = new Color(1f, 0.96f, 0.9f);
             light.intensity = 1.35f;
             light.shadows = LightShadows.Soft;
-            lightGo.transform.rotation = Quaternion.Euler(48f, -35f, 0f);
+            light.shadowStrength = 0.55f;
+            // From behind and above the player, so the board's and table's shadows fall away from the work area.
+            lightGo.transform.rotation = Quaternion.Euler(58f, 18f, 0f);
 
             var fill = new GameObject("Fill Light").AddComponent<Light>();
             fill.type = LightType.Directional;
