@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "unity-mcp": {
+      "command": "C:\\Users\\Andrew\\.unity\\relay\\relay_win.exe",
+      "args": [
+        "--mcp",
+        "--project-path",
+        "C:\\Users\\Andrew\\Unity\\GLaDE"
+      ]
+    }
+  }
+}
