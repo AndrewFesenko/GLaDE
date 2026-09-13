@@ -106,6 +106,7 @@ namespace GLaDE.Problems
             }
 
             foreach (var s in p.supports) BuildSupport(s, nodeGroups[s.node]);
+            lowestArrowY = 0f;
             float maxLoad = (float)Math.Max(1e-3, inst.Loads.Count > 0 ? inst.Loads.Max(l => l.Magnitude) : 1);
             foreach (var l in inst.Loads) BuildLoadArrow(l, maxLoad);
             foreach (var d in p.distributedLoads) BuildDistributedLoad(d, inst);
@@ -211,23 +212,45 @@ namespace GLaDE.Problems
             }
         }
 
+        float lowestArrowY;   // local y of the lowest hanging load arrow, so dimension lines can stay clear
+
         void BuildLoadArrow(AppliedForce l, float maxLoad)
         {
             var group = nodeGroups[l.Node];
             Vector3 dir = new Vector3((float)l.Force.x, (float)l.Force.y, 0).normalized;
             float len = Mathf.Lerp(theme.arrowMinLength, theme.arrowMaxLength, (float)(l.Magnitude / maxLoad));
             var arrow = MeshFactory.Arrow("Load " + l.Id, len, theme.arrowShaftRadius, theme.loadArrow, group);
-            // tail sits back along -dir so the tip touches the joint
-            arrow.transform.localPosition = -dir * (len + theme.jointRadius * 0.8f);
             arrow.transform.localRotation = Quaternion.FromToRotation(Vector3.up, dir);
+
+            // Textbook convention: the arrow pushes onto the body (tip at the joint) when there is free space
+            // behind it; otherwise it hangs off the joint (tail at the joint), e.g. a downward load on a
+            // bottom-chord joint, so it never runs through the structure.
+            Vector3 nodeLocalPos = nodeLocal[l.Node];
+            Vector3 pushMid = nodeLocalPos - dir * (len * 0.5f);
+            bool hang = InsideStructure(pushMid);
+            Vector3 gap = dir * (theme.jointRadius * 0.8f);
+            arrow.transform.localPosition = hang ? gap : -dir * (len + theme.jointRadius * 0.8f);
+            float tailY = nodeLocalPos.y + (hang ? gap.y : -dir.y * (len + theme.jointRadius * 0.8f));
+            float tipY = tailY + dir.y * len;
+            lowestArrowY = Mathf.Min(lowestArrowY, Mathf.Min(tailY, tipY));
+
             var label = MakeLabel(group, SolutionGenerator.Sym(l.Id) + " = " + ProblemInstance.Force(l.Magnitude), theme.labelSize * 0.85f, theme.loadLabelColor);
-            // Beside the arrow's tail rather than on the arrow's line, so it never sits on top of a member.
+            // Beside the arrow rather than on its line, so it never sits on top of a member.
             Vector3 side = Vector3.Cross(dir, Vector3.forward).normalized;
             if (Mathf.Abs(side.x) < 0.5f) side = Vector3.right;
-            label.transform.localPosition = -dir * (len * 0.55f) + side * (theme.labelSize * 1.2f);
+            Vector3 along = hang ? dir * (len * 0.55f + theme.jointRadius) : -dir * (len * 0.55f);
+            label.transform.localPosition = along + side * (theme.labelSize * 1.2f);
             label.alignment = side.x > 0 ? TMPro.TextAlignmentOptions.Left : TMPro.TextAlignmentOptions.Right;
             label.rectTransform.pivot = new Vector2(side.x > 0 ? 0f : 1f, 0.5f);   // text starts at the label position
             loadArrows[l.Id] = arrow.transform;
+        }
+
+        /// <summary>True if a local point lies inside the structure's bounding box (with a small margin).</summary>
+        bool InsideStructure(Vector3 local)
+        {
+            float halfW = WidthMetres * 0.5f, h = HeightMetres, m = theme.jointRadius;
+            if (h < 1e-4f) return false;   // a beam has no interior to avoid
+            return local.x > -halfW + m && local.x < halfW - m && local.y > m && local.y < h - m;
         }
 
         void BuildDistributedLoad(DistributedLoadDef d, ProblemInstance inst)
@@ -267,7 +290,7 @@ namespace GLaDE.Problems
             var holder = new GameObject("Dimensions").transform;
             holder.SetParent(root, false);
             dimensionObjects.Add(holder);
-            float yLine = -(theme.jointRadius * 4f + theme.labelSize * 2.2f);
+            float yLine = Mathf.Min(-(theme.jointRadius * 4f + theme.labelSize * 2.2f), lowestArrowY - theme.labelSize * 1.6f);
             var xs = inst.Nodes.Values.Select(v => v.x).Distinct().OrderBy(x => x).ToList();
             float tick = theme.labelSize * 0.5f;
             Vector3 L = new Vector3((float)((xs[0] - (minX + maxX) * 0.5) * Scale), yLine, 0);
