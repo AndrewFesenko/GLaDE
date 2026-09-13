@@ -6,6 +6,14 @@ using UnityEngine.XR.Interaction.Toolkit.Interactors;
 
 namespace GLaDE.Problems
 {
+    /// <summary>Interaction filter that admits only <see cref="ForceToken"/> interactables.</summary>
+    public class ForceTokenOnlyFilter : UnityEngine.XR.Interaction.Toolkit.Filtering.IXRSelectFilter, UnityEngine.XR.Interaction.Toolkit.Filtering.IXRHoverFilter
+    {
+        public bool canProcess => true;
+        public bool Process(IXRSelectInteractor interactor, IXRSelectInteractable interactable) => interactable.transform.GetComponent<ForceToken>() != null;
+        public bool Process(IXRHoverInteractor interactor, IXRHoverInteractable interactable) => interactable.transform.GetComponent<ForceToken>() != null;
+    }
+
     /// <summary>
     /// A place on the free-body diagram where a force must be drawn: a cut member end or a support reaction.
     /// Accepts one <see cref="ForceToken"/> and orients it along the assumed positive direction.
@@ -41,6 +49,11 @@ namespace GLaDE.Problems
             fs.socket = go.GetComponent<XRSocketInteractor>();
             fs.socket.hoverSocketSnapping = true;
             fs.socket.recycleDelayTime = 0.3f;
+            // Only force tokens may snap in. Without this the socket would grab whatever grabbable it overlaps,
+            // including the beam it is attached to.
+            var filter = new ForceTokenOnlyFilter();
+            fs.socket.selectFilters.Add(filter);
+            fs.socket.hoverFilters.Add(filter);
             var attach = new GameObject("Attach").transform;
             attach.SetParent(go.transform, false);
             fs.socket.attachTransform = attach;

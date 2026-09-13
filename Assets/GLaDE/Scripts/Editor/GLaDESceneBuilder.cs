@@ -41,9 +41,9 @@ namespace GLaDE.EditorTools
         public static void BuildAll()
         {
             var theme = CreateTheme();
-            ProblemAssetFactory.CreateAll();
-            var truss = AssetDatabase.LoadAssetAtPath<StaticsProblem>(ProblemAssetFactory.TrussAssetPath);
-            var beam = AssetDatabase.LoadAssetAtPath<StaticsProblem>(ProblemAssetFactory.BeamAssetPath);
+            var created = ProblemAssetFactory.CreateAll();
+            var truss = created.truss != null ? created.truss : LoadProblem(ProblemAssetFactory.TrussAssetPath);
+            var beam = created.beam != null ? created.beam : LoadProblem(ProblemAssetFactory.BeamAssetPath);
             BuildProblemScene(truss, theme);
             BuildProblemScene(beam, theme);
             BuildHubScene(theme);
@@ -51,19 +51,85 @@ namespace GLaDE.EditorTools
             Debug.Log("[GLaDE] Build Everything finished.");
         }
 
+        /// <summary>Loads a problem asset, forcing a synchronous import if it was just written.</summary>
+        static StaticsProblem LoadProblem(string path)
+        {
+            var p = AssetDatabase.LoadAssetAtPath<StaticsProblem>(path);
+            if (p == null)
+            {
+                AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceSynchronousImport);
+                p = AssetDatabase.LoadAssetAtPath<StaticsProblem>(path);
+            }
+            return p;
+        }
+
         [MenuItem("GLaDE/Build Truss Scene", priority = 1)]
-        public static void BuildTruss() => BuildProblemScene(AssetDatabase.LoadAssetAtPath<StaticsProblem>(ProblemAssetFactory.TrussAssetPath), CreateTheme());
+        public static void BuildTruss() => BuildProblemScene(LoadProblem(ProblemAssetFactory.TrussAssetPath), CreateTheme());
 
         [MenuItem("GLaDE/Build Beam Scene", priority = 2)]
-        public static void BuildBeam() => BuildProblemScene(AssetDatabase.LoadAssetAtPath<StaticsProblem>(ProblemAssetFactory.BeamAssetPath), CreateTheme());
+        public static void BuildBeam() => BuildProblemScene(LoadProblem(ProblemAssetFactory.BeamAssetPath), CreateTheme());
 
         [MenuItem("GLaDE/Build Hub Scene", priority = 3)]
         public static void BuildHub() => BuildHubScene(CreateTheme());
 
         // ------------------------------------------------------------------ materials & theme
 
+        /// <summary>
+        /// The bundled LiberationSans atlas is static (ASCII + Latin-1). Equations use Greek sigma, arrows and dashes,
+        /// so switch it to dynamic population and let it grow extra atlas pages at runtime.
+        /// </summary>
+        public const string FontAssetPath = "Assets/GLaDE/Fonts/GLaDE Sans SDF.asset";
+
+        public static void EnsureDynamicFont()
+        {
+            // Put the bundled static atlas back the way TMP ships it.
+            var liberation = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>("Assets/TextMesh Pro/Resources/Fonts & Materials/LiberationSans SDF.asset");
+            if (liberation != null && liberation.atlasPopulationMode != AtlasPopulationMode.Static)
+            {
+                liberation.atlasPopulationMode = AtlasPopulationMode.Static;
+                liberation.isMultiAtlasTexturesEnabled = false;
+                EditorUtility.SetDirty(liberation);
+            }
+
+            var font = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(FontAssetPath);
+            if (font == null)
+            {
+                var ttf = AssetDatabase.LoadAssetAtPath<Font>("Assets/TextMesh Pro/Fonts/LiberationSans.ttf");
+                if (ttf == null) { Debug.LogWarning("[GLaDE] LiberationSans.ttf not found; import TMP Essentials."); return; }
+                if (!AssetDatabase.IsValidFolder("Assets/GLaDE/Fonts")) AssetDatabase.CreateFolder("Assets/GLaDE", "Fonts");
+                font = TMP_FontAsset.CreateFontAsset(ttf, 72, 9, UnityEngine.TextCore.LowLevel.GlyphRenderMode.SDFAA, 1024, 1024, AtlasPopulationMode.Dynamic, true);
+                font.name = "GLaDE Sans SDF";
+                font.atlasTexture.name = "GLaDE Sans SDF Atlas";
+                font.material.name = "GLaDE Sans SDF Material";
+                AssetDatabase.CreateAsset(font, FontAssetPath);
+                AssetDatabase.AddObjectToAsset(font.atlasTexture, font);
+                AssetDatabase.AddObjectToAsset(font.material, font);
+                AssetDatabase.SaveAssets();
+                AssetDatabase.ImportAsset(FontAssetPath, ImportAssetOptions.ForceSynchronousImport);
+                font = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(FontAssetPath);
+                Debug.Log("[GLaDE] Created dynamic font asset " + FontAssetPath);
+            }
+
+            // Make it the project-wide default so every label and UI text gets Greek, arrows and dashes.
+            var settings = TMP_Settings.instance;
+            if (settings != null && font != null)
+            {
+                var so = new SerializedObject(settings);
+                var prop = so.FindProperty("m_defaultFontAsset");
+                if (prop != null && prop.objectReferenceValue != font)
+                {
+                    prop.objectReferenceValue = font;
+                    so.ApplyModifiedPropertiesWithoutUndo();
+                    EditorUtility.SetDirty(settings);
+                    AssetDatabase.SaveAssets();
+                    Debug.Log("[GLaDE] TMP default font set to GLaDE Sans SDF.");
+                }
+            }
+        }
+
         public static VisualTheme CreateTheme()
         {
+            EnsureDynamicFont();
             ProblemAssetFactory.EnsureFolders();
             if (!AssetDatabase.IsValidFolder(MaterialsFolder)) AssetDatabase.CreateFolder("Assets/GLaDE", "Materials");
             if (!AssetDatabase.IsValidFolder(ScenesFolder)) AssetDatabase.CreateFolder("Assets/GLaDE", "Scenes");
@@ -152,7 +218,7 @@ namespace GLaDE.EditorTools
 
         public static void BuildProblemScene(StaticsProblem problem, VisualTheme theme)
         {
-            if (problem == null) { Debug.LogError("[GLaDE] Problem asset missing; run Create Problem Assets first."); return; }
+            if (problem == null) { Debug.LogError("[GLaDE] Problem asset missing (null reference passed to BuildProblemScene); run GLaDE/Create Problem Assets first."); return; }
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
             BuildEnvironment(theme);
             BuildXRCore();
@@ -239,7 +305,7 @@ namespace GLaDE.EditorTools
                 string p = $"{ScenesFolder}/{name}.unity";
                 if (System.IO.File.Exists(p)) list.Add(new EditorBuildSettingsScene(p, true));
             }
-            foreach (var legacy in new[] { "Assets/Scenes/MainMenu.unity", "Assets/Scenes/HomeScreen.unity", "Assets/Scenes/AboutGlade.unity" })
+            foreach (var legacy in new[] { "Assets/LegacyMenu/Scenes/MainMenu.unity", "Assets/LegacyMenu/Scenes/HomeScreen.unity", "Assets/LegacyMenu/Scenes/AboutGlade.unity" })
                 if (System.IO.File.Exists(legacy)) list.Add(new EditorBuildSettingsScene(legacy, true));
             EditorBuildSettings.scenes = list.ToArray();
         }
@@ -413,8 +479,8 @@ namespace GLaDE.EditorTools
             var hl = row.GetComponent<HorizontalLayoutGroup>();
             hl.spacing = 12; hl.childControlWidth = true; hl.childControlHeight = true; hl.childForceExpandWidth = true; hl.childAlignment = TextAnchor.MiddleCenter;
 
-            wb.backButton = MakeButton(row, "Back", "◀ Back", 22, new Vector2(150, 70));
-            wb.nextButton = MakeButton(row, "Next", "Next step ▶", 22, new Vector2(190, 70));
+            wb.backButton = MakeButton(row, "Back", "< Back", 22, new Vector2(150, 70));
+            wb.nextButton = MakeButton(row, "Next", "Next step >", 22, new Vector2(190, 70));
             wb.nextButton.image.color = new Color(0.20f, 0.55f, 0.40f);
             wb.hintButton = MakeButton(row, "Hint", "Hint", 22, new Vector2(140, 70));
             wb.skipButton = MakeButton(row, "Skip", "Show me how", 22, new Vector2(190, 70));

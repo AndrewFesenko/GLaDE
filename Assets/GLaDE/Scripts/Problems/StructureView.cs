@@ -221,7 +221,12 @@ namespace GLaDE.Problems
             arrow.transform.localPosition = -dir * (len + theme.jointRadius * 0.8f);
             arrow.transform.localRotation = Quaternion.FromToRotation(Vector3.up, dir);
             var label = MakeLabel(group, SolutionGenerator.Sym(l.Id) + " = " + ProblemInstance.Force(l.Magnitude), theme.labelSize * 0.85f, theme.loadLabelColor);
-            label.transform.localPosition = -dir * (len + theme.jointRadius * 0.8f + theme.labelSize * 0.9f);
+            // Beside the arrow's tail rather than on the arrow's line, so it never sits on top of a member.
+            Vector3 side = Vector3.Cross(dir, Vector3.forward).normalized;
+            if (Mathf.Abs(side.x) < 0.5f) side = Vector3.right;
+            label.transform.localPosition = -dir * (len * 0.55f) + side * (theme.labelSize * 1.2f);
+            label.alignment = side.x > 0 ? TMPro.TextAlignmentOptions.Left : TMPro.TextAlignmentOptions.Right;
+            label.rectTransform.pivot = new Vector2(side.x > 0 ? 0f : 1f, 0.5f);   // text starts at the label position
             loadArrows[l.Id] = arrow.transform;
         }
 
@@ -407,6 +412,7 @@ namespace GLaDE.Problems
             foreach (var r in group.GetComponentsInChildren<MeshRenderer>())
             {
                 if (r.GetComponentInParent<MemberView>() != null) continue;
+                if (r.GetComponent<TMPro.TMP_Text>() != null) continue; // text keeps its own material; only its alpha fades
                 if (ghost) { if (r.sharedMaterial != theme.memberGhost) r.gameObject.AddComponent<GhostMemory>().original = r.sharedMaterial; r.sharedMaterial = theme.memberGhost; }
                 else { var mem = r.GetComponent<GhostMemory>(); if (mem != null) { r.sharedMaterial = mem.original; MeshFactory.SafeDestroy(mem); } }
             }

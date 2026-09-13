@@ -12,6 +12,9 @@ EditorBuildSettings:
     path: Assets/GLaDE/Scenes/Problem_Truss.unity
     guid: 322662e5c36fb094a96e639c30747dc7
   - enabled: 1
+    path: Assets/GLaDE/Scenes/Problem_Beam.unity
+    guid: b5fbf39c61946fd499d7d0422141f059
+  - enabled: 1
     path: Assets/LegacyMenu/Scenes/MainMenu.unity
     guid: bc0ea2be1cbd1ff4096117575b70aa06
   - enabled: 1

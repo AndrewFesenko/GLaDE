@@ -504,7 +504,10 @@ namespace GLaDE.Core
                     step.Values[t] = v;
                     if (isMember) step.HighlightMembers.Add(p.FindMember(t).Id);
                 }
-                sb.Append("\nCheck the signs against the diagram: a compression member pushes on its joints, a tension member pulls. ");
+                if (p.kind == StructureKind.Truss)
+                    sb.Append("\nCheck the signs against the diagram: a compression member pushes on its joints, a tension member pulls. ");
+                else
+                    sb.Append("\nA positive reaction acts in the direction drawn on the free-body diagram; a negative one acts the opposite way. ");
                 sb.Append("If a result looks unreasonably large compared with the applied loads, revisit the moment arms.");
                 step.Body = sb.ToString();
                 return step;

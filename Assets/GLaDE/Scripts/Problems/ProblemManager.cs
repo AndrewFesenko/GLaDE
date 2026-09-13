@@ -235,9 +235,11 @@ namespace GLaDE.Problems
         void EnableBodyGrab()
         {
             var root = structure.Root.gameObject;
-            var rb = root.GetComponent<Rigidbody>() ?? root.AddComponent<Rigidbody>();
+            var rb = root.GetComponent<Rigidbody>();
+            if (rb == null) rb = root.AddComponent<Rigidbody>();   // explicit null check: Unity's fake null defeats ??
             rb.isKinematic = true; rb.useGravity = false;
-            bodyGrab = root.GetComponent<XRGrabInteractable>() ?? root.AddComponent<XRGrabInteractable>();
+            bodyGrab = root.GetComponent<XRGrabInteractable>();
+            if (bodyGrab == null) bodyGrab = root.AddComponent<XRGrabInteractable>();
             bodyGrab.movementType = XRBaseInteractable.MovementType.Instantaneous;
             bodyGrab.useDynamicAttach = true;
             bodyGrab.throwOnDetach = false;

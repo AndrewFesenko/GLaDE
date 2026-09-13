@@ -19,8 +19,12 @@ namespace GLaDE.EditorTools
         public const string BeamAssetPath = ProblemFolder + "/Beam Reactions.asset";
         public const string LibraryPath = DataFolder + "/Problem Library.asset";
 
+        public struct Created { public StaticsProblem truss; public StaticsProblem beam; public ProblemLibrary library; }
+
         [MenuItem("GLaDE/Create Problem Assets", priority = 20)]
-        public static void CreateAll()
+        public static void CreateAllMenu() => CreateAll();
+
+        public static Created CreateAll()
         {
             EnsureFolders();
             var truss = CreateOrLoad<StaticsProblem>(TrussAssetPath);
@@ -32,6 +36,7 @@ namespace GLaDE.EditorTools
             EditorUtility.SetDirty(truss); EditorUtility.SetDirty(beam); EditorUtility.SetDirty(lib);
             AssetDatabase.SaveAssets();
             Debug.Log("[GLaDE] Problem assets created/updated.");
+            return new Created { truss = truss, beam = beam, library = lib };
         }
 
         public static void EnsureFolders()
@@ -130,13 +135,13 @@ namespace GLaDE.EditorTools
             p.parameters = new List<ParameterDef>
             {
                 P("L", "Beam length", "m", 6f, 10f, 1f, 8f),
-                P("a", "Position of P from A", "m", 2f, 7f, 1f, 6f),
+                P("a", "Position of P from A", "m", 2f, 5f, 1f, 3f),
                 P("w", "Distributed load", "kN/m", 1f, 5f, 1f, 2f),
                 P("P", "Point load", "kN", 5f, 20f, 5f, 10f, 0),
             };
             p.nodes = new List<NodeDef>
             {
-                N("A", "0", "0"), N("D", "L/2", "0"), N("C", "min(a, L-1)", "0"), N("B", "L", "0"),
+                N("A", "0", "0"), N("D", "L/2", "0"), N("C", "a", "0"), N("B", "L", "0"),
             };
             p.members = new List<MemberDef> { M("A", "D"), M("D", "C"), M("C", "B") };
             p.supports = new List<SupportDef>
