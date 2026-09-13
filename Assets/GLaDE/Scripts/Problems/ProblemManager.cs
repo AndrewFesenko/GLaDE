@@ -80,6 +80,7 @@ namespace GLaDE.Problems
                 whiteboard.NewProblemPressed += NewProblem;
                 whiteboard.ResetPressed += ResetAttempt;
                 whiteboard.ReviewPressed += ReviewSolution;
+                whiteboard.BackToSheetPressed += BackToSheet;
                 if (whiteboard.answerPanel != null) whiteboard.answerPanel.Changed += OnAnswersChanged;
             }
             if (sectionPlane != null) sectionPlane.Released += OnCutReleased;
@@ -171,16 +172,16 @@ namespace GLaDE.Problems
                         ? "<b>1 · Isolate a body.</b>  You cannot see the force inside a member, so make it visible: grab the <b>section plane</b> and slice through the members you are asked about. Each cut member then acts on the piece you keep as an external force. One rigid piece gives three equilibrium equations, so a section may cut at most <b>three</b> unknown members."
                         : "<b>1 · Isolate the body.</b>  Grab the beam and lift it clear of its supports. Whatever touched it must be replaced by a force.");
                     whiteboard?.SetProgress("");
-                    whiteboard?.ConfigureButtons(hint: true, skip: hintsUsed > 0, reset: true);
+                    whiteboard?.ConfigureButtons(hint: true, skip: hintsUsed > 0, reset: true, backToSheet: true);
                     break;
                 case Phase.ChooseSide:
                     whiteboard?.SetPhase("<b>2 · Choose the part to keep.</b>  Point at a half and squeeze the grip to keep it. Either half is in equilibrium on its own; the one with fewer loads means shorter equations.");
-                    whiteboard?.ConfigureButtons(hint: true, skip: hintsUsed > 0, reset: true);
+                    whiteboard?.ConfigureButtons(hint: true, skip: hintsUsed > 0, reset: true, backToSheet: true);
                     break;
                 case Phase.BuildFbd:
                     whiteboard?.SetPhase("<b>" + (truss ? "3" : "2") + " · Build the free-body diagram.</b>  Everything the isolated body was touching becomes a force. Grab a <b>force token</b> from the table and drop it on each faint marker: every cut member end and every support reaction. A token names itself from where you put it.");
                     UpdateFbdProgress();
-                    whiteboard?.ConfigureButtons(hint: true, skip: hintsUsed > 0, reset: true);
+                    whiteboard?.ConfigureButtons(hint: true, skip: hintsUsed > 0, reset: true, backToSheet: true);
                     break;
                 case Phase.Solve:
                     whiteboard?.SetPhase("<b>" + (truss ? "4" : "3") + " · Solve.</b>  Step through the equilibrium equations. Each step explains <i>why</i> that equation is the right one to write next.");
@@ -199,6 +200,7 @@ namespace GLaDE.Problems
                     whiteboard?.ConfigureButtons(newProblem: true, review: true, guide: !guided);
                     structure.ClearMemberHighlights(); structure.ClearNodeHighlights();
                     structure.ShowMemberForces(true);
+                    if (guided) ProgressStore.RecordGuided(problem.problemId);
                     break;
             }
         }
@@ -217,14 +219,20 @@ namespace GLaDE.Problems
             var panel = whiteboard.answerPanel;
             if (!panel.IsComplete()) { whiteboard.ShowFeedback("Fill in every row first" + (problem.kind == StructureKind.Truss ? ", including tension or compression." : "."), 6f); return; }
             Attempts++;
+            ProgressStore.RecordAttempt(problem.problemId);
             int correct = panel.Grade(Instance, relativeTolerance, absoluteTolerance);
             int total = panel.Rows.Count;
             if (correct == total)
             {
-                whiteboard.ShowFeedback("All correct. The members are now coloured: blue in tension, red in compression.", 12f);
+                whiteboard.sounds?.PlaySuccess();
+                ProgressStore.RecordSolvedUnaided(problem.problemId);
+                whiteboard.ShowFeedback(problem.kind == StructureKind.Truss
+                    ? "All correct. The members are now coloured: blue in tension, red in compression."
+                    : "All correct. The reactions are drawn on the beam.", 12f);
                 EnterPhase(Phase.Done);
                 return;
             }
+            whiteboard.sounds?.PlayError();
             string msg = $"{correct} of {total} correct. ";
             if (Attempts == 1) msg += "Check the marked rows: a sign or a tension/compression slip is the usual culprit. Redo those rows and press Check again.";
             else if (Attempts == 2) msg += "Still off? Re-draw the free-body diagram on the notepad: are all loads, reactions and cut-member forces on it? Or press Guide me to take the structure apart together.";
@@ -251,6 +259,14 @@ namespace GLaDE.Problems
                 ? "The tools are out. The blue <b>section plane</b> is a knife: whatever it passes through gets cut. The arrows on the table are <b>force tokens</b>: blank until placed. Nothing is graded here — this is the method, step by step."
                 : "The tools are out. Grab the beam to start. The arrows on the table are <b>force tokens</b>: blank until placed on the free-body diagram.", 25f);
             EnterPhase(Phase.Isolate);
+        }
+
+        /// <summary>Leaves guided mode and returns to the homework sheet with the same numbers (typed answers are kept).</summary>
+        public void BackToSheet()
+        {
+            if (Instance == null || CurrentPhase == Phase.Attempt) return;
+            StopAllCoroutines();
+            LoadInstance(Instance);
         }
 
         /// <summary>After finishing, re-open the solution steps for reading.</summary>
@@ -450,6 +466,7 @@ namespace GLaDE.Problems
         void OnSocketChanged(ForceSocket s)
         {
             if (CurrentPhase != Phase.BuildFbd) return;
+            if (s.IsFilled) whiteboard?.sounds?.PlaySnap();
             UpdateFbdProgress();
             if (sockets.All(x => x.IsFilled))
             {
@@ -489,7 +506,7 @@ namespace GLaDE.Problems
             StepIndex = Mathf.Clamp(StepIndex, 0, Instance.Steps.Count - 1);
             var step = Instance.Steps[StepIndex];
             whiteboard?.ShowStep($"Step {StepIndex + 1} of {Instance.Steps.Count} — {step.Title}", step.Body, animate);
-            whiteboard?.ConfigureButtons(next: true, back: StepIndex > 0, reset: true);
+            whiteboard?.ConfigureButtons(next: true, back: StepIndex > 0, reset: true, backToSheet: true);
             whiteboard?.SetButtonLabel(whiteboard.nextButton, StepIndex == Instance.Steps.Count - 1 ? "Finish" : "Next step >");
 
             structure.ClearMemberHighlights(); structure.ClearNodeHighlights();

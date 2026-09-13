@@ -29,6 +29,8 @@ namespace GLaDE.EditorTools
         public const string ThemePath = "Assets/GLaDE/Data/GLaDE Visual Theme.asset";
         public const string FontAssetPath = "Assets/GLaDE/Fonts/GLaDE Sans SDF.asset";
         public const string HubSceneName = "Hub";
+        public const string LogoPath = "Assets/GLaDE/Art/GLaDE Logo.png";
+        public const string AudioFolder = "Assets/GLaDE/Audio";
 
         // Room layout (metres). Player faces +z.
         static readonly Vector3 PlayerStart = new Vector3(0f, 0f, -1.0f);
@@ -56,10 +58,10 @@ namespace GLaDE.EditorTools
 
         static void BuildScenes(VisualTheme theme)
         {
-            var truss = LoadProblem(ProblemAssetFactory.TrussAssetPath);
-            var beam = LoadProblem(ProblemAssetFactory.BeamAssetPath);
-            BuildProblemScene(truss, theme);
-            BuildProblemScene(beam, theme);
+            // Load each problem right before its scene: creating a new scene unloads unreferenced assets,
+            // so a problem loaded earlier comes back as a dead reference.
+            BuildProblemScene(ProblemAssetFactory.TrussAssetPath, theme);
+            BuildProblemScene(ProblemAssetFactory.BeamAssetPath, theme);
             BuildHubScene(theme);
             UpdateBuildSettings();
             Debug.Log("[GLaDE] Build Everything finished.");
@@ -88,10 +90,10 @@ namespace GLaDE.EditorTools
         }
 
         [MenuItem("GLaDE/Build Truss Scene", priority = 1)]
-        public static void BuildTruss() => BuildProblemScene(LoadProblem(ProblemAssetFactory.TrussAssetPath), CreateTheme());
+        public static void BuildTruss() => BuildProblemScene(ProblemAssetFactory.TrussAssetPath, CreateTheme());
 
         [MenuItem("GLaDE/Build Beam Scene", priority = 2)]
-        public static void BuildBeam() => BuildProblemScene(LoadProblem(ProblemAssetFactory.BeamAssetPath), CreateTheme());
+        public static void BuildBeam() => BuildProblemScene(ProblemAssetFactory.BeamAssetPath, CreateTheme());
 
         [MenuItem("GLaDE/Build Hub Scene", priority = 3)]
         public static void BuildHub() => BuildHubScene(CreateTheme());
@@ -236,11 +238,12 @@ namespace GLaDE.EditorTools
 
         // ------------------------------------------------------------------ scenes
 
-        public static void BuildProblemScene(StaticsProblem problem, VisualTheme theme)
+        public static void BuildProblemScene(string problemPath, VisualTheme theme)
         {
-            if (problem == null) { Debug.LogError("[GLaDE] Problem asset missing (null reference passed to BuildProblemScene); run GLaDE/Create Problem Assets first."); return; }
-            Debug.Log("[GLaDE] Building scene for " + problem.name + " -> " + problem.sceneName);
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+            var problem = LoadProblem(problemPath);
+            if (problem == null) { Debug.LogError($"[GLaDE] Problem asset missing at {problemPath}; run GLaDE/Create Problem Assets first."); return; }
+            Debug.Log("[GLaDE] Building scene for " + problem.name + " -> " + problem.sceneName);
             BuildEnvironment(theme);
             BuildXRCore();
             BuildRig(PlayerStart, Quaternion.identity);
@@ -347,6 +350,17 @@ namespace GLaDE.EditorTools
             Vector3 boardPos = new Vector3(0f, 1.5f, 1.2f);
             var board = BuildBoardShell(theme, boardPos, FaceFrom(boardPos, PlayerStart + Vector3.up * 1.5f), null, 1.5f, 1.1f, out var canvas, false);
             board.name = "Hub Board";
+            AddSounds(board);
+            BuildLogo(null, boardPos + new Vector3(0f, 0.95f, 0.0f), FaceFrom(boardPos, PlayerStart), 0.7f, 1f);
+
+            // How-to card to the left of the board
+            Vector3 howPos = boardPos + new Vector3(-1.45f, -0.1f, 0.15f);
+            var how = BuildBoardShell(theme, howPos, FaceFrom(howPos, PlayerStart + Vector3.up * 1.5f), null, 1.0f, 0.9f, out var howCanvas, false);
+            how.name = "How To Board";
+            var howText = UIKit.MakeText(howCanvas, "How To", "", 24, TextAlignmentOptions.TopLeft, new Vector2(0.5f, 1f), new Vector2(0, -34), new Vector2(920, 820));
+            howText.rectTransform.pivot = new Vector2(0.5f, 1f);
+            howText.color = new Color(0.9f, 0.92f, 0.96f);
+            howText.enableAutoSizing = true; howText.fontSizeMin = 16; howText.fontSizeMax = 26;
 
             var title = UIKit.MakeText(canvas, "Title", "<b>GLaDE</b>  ·  Statics Lab", 46, TextAlignmentOptions.Center, new Vector2(0.5f, 1f), new Vector2(0, -60), new Vector2(1400, 80));
             title.color = new Color(1f, 0.85f, 0.45f);
@@ -364,7 +378,7 @@ namespace GLaDE.EditorTools
             template.GetComponent<LayoutElement>().preferredHeight = 120;
 
             var hub = board.AddComponent<ProblemHub>();
-            hub.library = library; hub.buttonContainer = container; hub.buttonTemplate = template; hub.descriptionText = desc;
+            hub.library = library; hub.buttonContainer = container; hub.buttonTemplate = template; hub.descriptionText = desc; hub.howToText = howText;
 
             EditorSceneManager.MarkSceneDirty(scene);
             string path = $"{ScenesFolder}/{HubSceneName}.unity";
@@ -380,8 +394,6 @@ namespace GLaDE.EditorTools
                 string p = $"{ScenesFolder}/{name}.unity";
                 if (System.IO.File.Exists(p)) list.Add(new EditorBuildSettingsScene(p, true));
             }
-            foreach (var legacy in new[] { "Assets/LegacyMenu/Scenes/MainMenu.unity", "Assets/LegacyMenu/Scenes/HomeScreen.unity", "Assets/LegacyMenu/Scenes/AboutGlade.unity" })
-                if (System.IO.File.Exists(legacy)) list.Add(new EditorBuildSettingsScene(legacy, true));
             EditorBuildSettings.scenes = list.ToArray();
         }
 
@@ -413,6 +425,22 @@ namespace GLaDE.EditorTools
             RenderSettings.fog = false;
 
             var env = new GameObject("Environment").transform;
+
+            // Accent light over the work area and a soft mat under it: the bench reads as the place to be.
+            var spot = new GameObject("Bench Light").AddComponent<Light>();
+            spot.type = LightType.Spot; spot.range = 7f; spot.spotAngle = 95f; spot.intensity = 14f;
+            spot.color = new Color(1f, 0.97f, 0.9f); spot.shadows = LightShadows.None;
+            spot.transform.position = new Vector3(0f, 3.0f, 0.6f); spot.transform.rotation = Quaternion.Euler(90f, 0f, 0f);
+
+            var mat = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            mat.name = "Work Mat";
+            MeshFactory.SafeDestroy(mat.GetComponent<Collider>());
+            mat.transform.SetParent(env, false);
+            mat.transform.position = new Vector3(0f, 0.006f, 0.35f);
+            mat.transform.localScale = new Vector3(5.2f, 0.012f, 3.2f);
+            mat.GetComponent<MeshRenderer>().sharedMaterial = Mat("Work Mat", new Color(0.24f, 0.27f, 0.34f), 0f, 0.25f);
+
+            BuildLogo(env, new Vector3(-2.6f, 2.55f, 5.44f), Quaternion.identity, 1.1f, 0.5f);   // high on the back wall, off to the side of the work area
 
             var floor = GameObject.CreatePrimitive(PrimitiveType.Plane);
             floor.name = "Floor";
@@ -448,6 +476,50 @@ namespace GLaDE.EditorTools
                 MeshFactory.SafeDestroy(trim.GetComponent<Collider>());
                 trim.GetComponent<MeshRenderer>().sharedMaterial = trimMat;
             }
+        }
+
+        /// <summary>The GLaDE logo as an unlit transparent quad (no white card), e.g. on a wall.</summary>
+        static GameObject BuildLogo(Transform parent, Vector3 pos, Quaternion rot, float size, float alpha)
+        {
+            var tex = AssetDatabase.LoadAssetAtPath<Texture2D>(LogoPath);
+            if (tex == null) { Debug.LogWarning("[GLaDE] Logo texture missing at " + LogoPath); return null; }
+            var importer = AssetImporter.GetAtPath(LogoPath) as TextureImporter;
+            if (importer != null && (!importer.alphaIsTransparency || importer.textureType != TextureImporterType.Default))
+            {
+                importer.textureType = TextureImporterType.Default; importer.alphaIsTransparency = true; importer.mipmapEnabled = true;
+                importer.SaveAndReimport();
+            }
+            string matPath = $"{MaterialsFolder}/Logo.mat";
+            var mat = AssetDatabase.LoadAssetAtPath<Material>(matPath);
+            if (mat == null) { mat = new Material(Shader.Find("Universal Render Pipeline/Unlit")); AssetDatabase.CreateAsset(mat, matPath); }
+            mat.SetTexture("_BaseMap", tex);
+            mat.SetColor("_BaseColor", new Color(1f, 1f, 1f, alpha));
+            mat.SetFloat("_Surface", 1f); mat.SetFloat("_Blend", 0f);
+            mat.SetOverrideTag("RenderType", "Transparent");
+            mat.SetFloat("_SrcBlend", (float)BlendMode.SrcAlpha); mat.SetFloat("_DstBlend", (float)BlendMode.OneMinusSrcAlpha); mat.SetFloat("_ZWrite", 0f);
+            mat.EnableKeyword("_SURFACE_TYPE_TRANSPARENT"); mat.EnableKeyword("_ALPHAPREMULTIPLY_ON");
+            mat.renderQueue = (int)RenderQueue.Transparent;
+            EditorUtility.SetDirty(mat);
+
+            var quad = GameObject.CreatePrimitive(PrimitiveType.Quad);
+            quad.name = "GLaDE Logo";
+            MeshFactory.SafeDestroy(quad.GetComponent<Collider>());
+            quad.transform.SetParent(parent, false);
+            quad.transform.SetPositionAndRotation(pos, rot);
+            quad.transform.localScale = new Vector3(size, size, 1f);
+            quad.GetComponent<MeshRenderer>().sharedMaterial = mat;
+            quad.GetComponent<MeshRenderer>().shadowCastingMode = ShadowCastingMode.Off;
+            return quad;
+        }
+
+        static UISounds AddSounds(GameObject host)
+        {
+            var s = host.AddComponent<UISounds>();
+            s.click = AssetDatabase.LoadAssetAtPath<AudioClip>($"{AudioFolder}/SFX_Hover_1.wav");
+            s.success = AssetDatabase.LoadAssetAtPath<AudioClip>($"{AudioFolder}/SFX_Click_SciFi.wav");
+            s.error = AssetDatabase.LoadAssetAtPath<AudioClip>($"{AudioFolder}/SFX_Hover_2.wav");
+            s.snap = AssetDatabase.LoadAssetAtPath<AudioClip>($"{AudioFolder}/SFX_Click_Mechanical.wav");
+            return s;
         }
 
         static void BuildXRCore()
@@ -539,7 +611,8 @@ namespace GLaDE.EditorTools
                 grab.useDynamicAttach = true;
                 grab.throwOnDetach = false;
                 grab.retainTransformParent = true;
-                grab.trackRotation = false;   // keep it upright; only reposition
+                grab.trackRotation = true;    // tilt and turn it, not just slide it
+                root.AddComponent<BoardControls>();
                 var label = MakeWorldLabel(root.transform, "<size=70%>grab bar: move the board</size>", root.transform.TransformPoint(new Vector3(0, height * 0.5f + 0.14f, 0)), 0.04f, theme.dimensionColor);
                 label.name = "Bar Sign";
                 MeshFactory.SafeDestroy(label.GetComponent<Billboard>());
@@ -554,6 +627,8 @@ namespace GLaDE.EditorTools
             var root = BuildBoardShell(theme, pos, rot, parent, w, h, out var canvas, true);
             root.name = "Whiteboard";
             var wb = root.AddComponent<Whiteboard>();
+            wb.controls = root.GetComponent<BoardControls>();
+            wb.sounds = AddSounds(root);
 
             float W = w * 1000f, H = h * 1000f, margin = 36f;
             float cw = W - 2 * margin;
@@ -610,6 +685,7 @@ namespace GLaDE.EditorTools
             var hl = row.GetComponent<HorizontalLayoutGroup>();
             hl.spacing = 12; hl.childControlWidth = true; hl.childControlHeight = true; hl.childForceExpandWidth = true; hl.childAlignment = TextAnchor.MiddleCenter;
 
+            wb.backToSheetButton = UIKit.MakeButton(row, "BackToSheet", "< Back to answers", 22, new Vector2(200, 70));
             wb.checkButton = UIKit.MakeButton(row, "Check", "Check answers", 22, new Vector2(200, 70), UIKit.AccentColor);
             wb.guideButton = UIKit.MakeButton(row, "Guide", "Guide me", 22, new Vector2(170, 70), UIKit.WarnColor);
             wb.backButton = UIKit.MakeButton(row, "Back", "< Back", 22, new Vector2(140, 70));
@@ -625,6 +701,17 @@ namespace GLaDE.EditorTools
                 var back = root.AddComponent<ReturnToHubButton>();
                 UnityEventTools.AddPersistentListener(hub.onClick, back.Go);
             }
+
+            // Board utilities in the top-right corner: face me, bigger/smaller.
+            var utilRow = new GameObject("Utilities", typeof(RectTransform), typeof(HorizontalLayoutGroup)).GetComponent<RectTransform>();
+            utilRow.SetParent(canvas, false);
+            utilRow.anchorMin = new Vector2(1f, 1f); utilRow.anchorMax = new Vector2(1f, 1f); utilRow.pivot = new Vector2(1f, 1f);
+            utilRow.anchoredPosition = new Vector2(-margin, -margin + 6); utilRow.sizeDelta = new Vector2(260, 44);
+            var uhl = utilRow.GetComponent<HorizontalLayoutGroup>();
+            uhl.spacing = 8; uhl.childControlWidth = true; uhl.childControlHeight = true; uhl.childForceExpandWidth = true;
+            wb.faceButton = UIKit.MakeButton(utilRow, "Face", "Face me", 18, new Vector2(120, 44));
+            wb.sizeButton = UIKit.MakeButton(utilRow, "Size", "Bigger", 18, new Vector2(120, 44));
+            wb.titleText.rectTransform.sizeDelta = new Vector2(cw - 280, 48);
             return wb;
         }
     }

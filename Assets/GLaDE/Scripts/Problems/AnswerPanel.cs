@@ -43,9 +43,14 @@ namespace GLaDE.Problems
         static readonly Color TcOn = new Color(0.25f, 0.60f, 0.45f);
         static readonly Color TcOff = new Color(0.24f, 0.28f, 0.40f);
 
-        /// <summary>Rebuilds the sheet for a problem instance.</summary>
+        ProblemInstance builtFor;
+
+        /// <summary>Rebuilds the sheet for a problem instance. Entries typed for the same instance are kept.</summary>
         public void Build(ProblemInstance inst)
         {
+            var keep = new Dictionary<string, (string entry, bool? tension)>();
+            if (ReferenceEquals(builtFor, inst)) foreach (var r in rows) keep[r.target] = (r.entry, r.tension);
+            builtFor = inst;
             foreach (Transform c in container) Destroy(c.gameObject);
             rows.Clear(); selected = null;
 
@@ -85,6 +90,7 @@ namespace GLaDE.Problems
                     row.compressionButton.onClick.AddListener(() => { captured.tension = false; Select(captured); Refresh(); });
                 }
                 row.resultText = UIKit.MakeText(row.root, "Result", "", 22, TextAlignmentOptions.MidlineLeft, new Vector2(0f, 0.5f), new Vector2(545, 0), new Vector2(w - 560, rowHeight));
+                if (keep.TryGetValue(target, out var prev)) { row.entry = prev.entry; row.tension = prev.tension; }
                 rows.Add(row);
                 y -= rowHeight + 8;
             }
