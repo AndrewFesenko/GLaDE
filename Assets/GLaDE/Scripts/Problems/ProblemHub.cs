@@ -31,7 +31,7 @@ namespace GLaDE.Problems
                 var b = Instantiate(buttonTemplate, buttonContainer);
                 b.gameObject.SetActive(true);
                 var label = b.GetComponentInChildren<TMP_Text>();
-                if (label) label.text = $"<b>{p.title}</b>\n<size=70%><alpha=#AA>{p.category} · {p.sourceReference}</alpha></size>";
+                if (label) label.text = $"<b>{p.title}</b>\n<size=70%><color=#FFFFFFAA>{p.category} · {p.sourceReference}</color></size>";
                 var captured = p;
                 b.onClick.AddListener(() => Open(captured));
             }

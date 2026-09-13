@@ -96,7 +96,7 @@ namespace GLaDE.Problems
             BuildTokens();
             plannedSection = problem.solutionPlan.FirstOrDefault(s => s.kind == StepKind.Section);
 
-            whiteboard?.SetHeader($"{problem.title}  <size=70%><alpha=#99>{problem.sourceReference}</alpha></size>", inst.PromptText);
+            whiteboard?.SetHeader($"{problem.title}  <size=70%><color=#FFFFFF99>{problem.sourceReference}</color></size>", inst.PromptText);
             whiteboard?.ClearStep();
             whiteboard?.ShowFeedback("", 0);
 

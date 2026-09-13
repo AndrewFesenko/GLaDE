@@ -259,7 +259,7 @@ namespace GLaDE.Problems
                 ? SolutionGenerator.Sym(d.id) + " = " + ProblemInstance.Fmt(wA, 1) + " kN/m"
                 : SolutionGenerator.Sym(d.id) + " = " + ProblemInstance.Fmt(wA, 1) + " → " + ProblemInstance.Fmt(wB, 1) + " kN/m";
             var label = MakeLabel(holder, text, theme.labelSize * 0.85f, theme.loadLabelColor);
-            label.transform.localPosition = (a + b) * 0.5f + Vector3.up * (maxH + theme.labelSize * 1.2f);
+            label.transform.localPosition = (a + b) * 0.5f + Vector3.up * (theme.arrowMaxLength + theme.jointRadius + theme.labelSize * 1.4f); // clear of the tallest point-load arrow
         }
 
         void BuildDimensions(ProblemInstance inst)
