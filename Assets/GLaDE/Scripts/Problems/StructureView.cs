@@ -27,7 +27,6 @@ namespace GLaDE.Problems
         readonly Dictionary<string, Transform> nodeObjects = new Dictionary<string, Transform>();
         readonly Dictionary<string, Vector3> nodeLocal = new Dictionary<string, Vector3>();
         readonly Dictionary<string, Transform> nodeGroups = new Dictionary<string, Transform>();   // node id -> group holding joint, label, supports, loads at that node
-        readonly Dictionary<string, Transform> loadArrows = new Dictionary<string, Transform>();
         readonly List<Transform> dimensionObjects = new List<Transform>();
         readonly List<GameObject> stubs = new List<GameObject>();
         Transform root;
@@ -119,7 +118,7 @@ namespace GLaDE.Problems
             if (KeptGroup != null) MeshFactory.SafeDestroy(KeptGroup.gameObject);
             if (DiscardedGroup != null) MeshFactory.SafeDestroy(DiscardedGroup.gameObject);
             root = null; KeptGroup = null; DiscardedGroup = null;
-            members.Clear(); nodeObjects.Clear(); nodeLocal.Clear(); nodeGroups.Clear(); loadArrows.Clear(); dimensionObjects.Clear(); stubs.Clear();
+            members.Clear(); nodeObjects.Clear(); nodeLocal.Clear(); nodeGroups.Clear(); loadViews.Clear(); forceLabels.Clear(); dimensionObjects.Clear(); stubs.Clear();
             Instance = null;
         }
 
@@ -214,35 +213,150 @@ namespace GLaDE.Problems
 
         float lowestArrowY;   // local y of the lowest hanging load arrow, so dimension lines can stay clear
 
+        /// <summary>A concentrated load's visuals: arrow, label and (in what-if mode) a grab knob.</summary>
+        public class LoadView
+        {
+            public string id;
+            public string node;
+            public GameObject arrow;
+            public TextMeshPro label;
+            public LoadHandle handle;
+            public Vector3 tailLocal;   // tail of the arrow in the node group's space
+            public Vector3 dir;
+        }
+
+        readonly Dictionary<string, LoadView> loadViews = new Dictionary<string, LoadView>();
+        public IEnumerable<LoadView> Loads => loadViews.Values;
+        public LoadView GetLoad(string id) => loadViews.TryGetValue(id, out var v) ? v : null;
+
         void BuildLoadArrow(AppliedForce l, float maxLoad)
         {
             var group = nodeGroups[l.Node];
             Vector3 dir = new Vector3((float)l.Force.x, (float)l.Force.y, 0).normalized;
-            float len = Mathf.Lerp(theme.arrowMinLength, theme.arrowMaxLength, (float)(l.Magnitude / maxLoad));
-            var arrow = MeshFactory.Arrow("Load " + l.Id, len, theme.arrowShaftRadius, theme.loadArrow, group);
-            arrow.transform.localRotation = Quaternion.FromToRotation(Vector3.up, dir);
+            var view = new LoadView { id = l.Id, node = l.Node, dir = dir };
+            view.arrow = MeshFactory.Arrow("Load " + l.Id, 0.2f, theme.arrowShaftRadius, theme.loadArrow, group);
+            view.label = MakeLabel(group, "", theme.labelSize * 0.85f, theme.loadLabelColor);
+            loadViews[l.Id] = view;
+            LayoutLoad(view, l.Node, l.Magnitude, maxLoad);
+        }
+
+        /// <summary>(Re)positions a load's arrow and label at a node for a magnitude. Used at build time and in what-if mode.</summary>
+        public void LayoutLoad(LoadView view, string node, double magnitude, double maxLoad)
+        {
+            var group = nodeGroups[node];
+            view.node = node;
+            Vector3 dir = view.dir;
+            float len = Mathf.Lerp(theme.arrowMinLength, theme.arrowMaxLength, (float)(magnitude / Math.Max(1e-3, maxLoad)));
+            MeshFactory.SafeDestroy(view.arrow);
+            view.arrow = MeshFactory.Arrow("Load " + view.id, len, theme.arrowShaftRadius, theme.loadArrow, group);
+            view.arrow.transform.localRotation = Quaternion.FromToRotation(Vector3.up, dir);
 
             // Textbook convention: the arrow pushes onto the body (tip at the joint) when there is free space
             // behind it; otherwise it hangs off the joint (tail at the joint), e.g. a downward load on a
             // bottom-chord joint, so it never runs through the structure.
-            Vector3 nodeLocalPos = nodeLocal[l.Node];
+            Vector3 nodeLocalPos = nodeLocal[node];
             Vector3 pushMid = nodeLocalPos - dir * (len * 0.5f);
             bool hang = InsideStructure(pushMid);
             Vector3 gap = dir * (theme.jointRadius * 0.8f);
-            arrow.transform.localPosition = hang ? gap : -dir * (len + theme.jointRadius * 0.8f);
-            float tailY = nodeLocalPos.y + (hang ? gap.y : -dir.y * (len + theme.jointRadius * 0.8f));
+            view.arrow.transform.localPosition = hang ? gap : -dir * (len + theme.jointRadius * 0.8f);
+            view.tailLocal = view.arrow.transform.localPosition;
+            float tailY = nodeLocalPos.y + view.tailLocal.y;
             float tipY = tailY + dir.y * len;
             lowestArrowY = Mathf.Min(lowestArrowY, Mathf.Min(tailY, tipY));
 
-            var label = MakeLabel(group, SolutionGenerator.Sym(l.Id) + " = " + ProblemInstance.Force(l.Magnitude), theme.labelSize * 0.85f, theme.loadLabelColor);
-            // Beside the arrow rather than on its line, so it never sits on top of a member.
+            view.label.transform.SetParent(group, false);
+            view.label.text = SolutionGenerator.Sym(view.id) + " = " + ProblemInstance.Force(magnitude);
             Vector3 side = Vector3.Cross(dir, Vector3.forward).normalized;
             if (Mathf.Abs(side.x) < 0.5f) side = Vector3.right;
             Vector3 along = hang ? dir * (len * 0.55f + theme.jointRadius) : -dir * (len * 0.55f);
-            label.transform.localPosition = along + side * (theme.labelSize * 1.2f);
-            label.alignment = side.x > 0 ? TMPro.TextAlignmentOptions.Left : TMPro.TextAlignmentOptions.Right;
-            label.rectTransform.pivot = new Vector2(side.x > 0 ? 0f : 1f, 0.5f);   // text starts at the label position
-            loadArrows[l.Id] = arrow.transform;
+            view.label.transform.localPosition = along + side * (theme.labelSize * 1.2f);
+            view.label.alignment = side.x > 0 ? TMPro.TextAlignmentOptions.Left : TMPro.TextAlignmentOptions.Right;
+            view.label.rectTransform.pivot = new Vector2(side.x > 0 ? 0f : 1f, 0.5f);
+
+            if (view.handle != null)
+            {
+                view.handle.transform.SetParent(group, false);
+                view.handle.SetRest(view.tailLocal);
+            }
+        }
+
+        /// <summary>Adds grab knobs to every concentrated load (what-if mode).</summary>
+        public List<LoadHandle> CreateLoadHandles()
+        {
+            var list = new List<LoadHandle>();
+            foreach (var v in loadViews.Values)
+            {
+                if (v.handle != null) { list.Add(v.handle); continue; }
+                v.handle = LoadHandle.Create(v.id, nodeGroups[v.node], v.tailLocal, theme.jointRadius * 1.1f, theme.memberHighlight);
+                list.Add(v.handle);
+            }
+            return list;
+        }
+
+        public void DestroyLoadHandles()
+        {
+            foreach (var v in loadViews.Values) { if (v.handle) MeshFactory.SafeDestroy(v.handle.gameObject); v.handle = null; }
+        }
+
+        /// <summary>The node nearest to a world point.</summary>
+        public string NearestNode(Vector3 world, out float distance)
+        {
+            string best = null; distance = float.MaxValue;
+            foreach (var kv in nodeLocal)
+            {
+                float d = Vector3.Distance(root.TransformPoint(kv.Value), world);
+                if (d < distance) { distance = d; best = kv.Key; }
+            }
+            return best;
+        }
+
+        // ------------------------------------------------------------------ live force visualisation (what-if)
+
+        readonly Dictionary<string, TextMeshPro> forceLabels = new Dictionary<string, TextMeshPro>();
+
+        /// <summary>Colours and thickens members by their solved force, and labels the listed members and reactions.</summary>
+        public void ApplyForces(ProblemInstance inst, IEnumerable<string> labelledMembers, bool showReactions)
+        {
+            double maxF = 1e-3;
+            foreach (var f in inst.MemberForces.Values) maxF = Math.Max(maxF, Math.Abs(f));
+            foreach (var kv in members)
+            {
+                var m = kv.Value;
+                if (m.State == MemberState.Ghost) continue;
+                if (!inst.MemberForces.TryGetValue(kv.Key, out double f)) continue;
+                m.SetState(f > 1e-6 ? MemberState.Tension : (f < -1e-6 ? MemberState.Compression : MemberState.ZeroForce));
+                m.SetThickness(0.55f + 1.3f * (float)(Math.Abs(f) / maxF));
+            }
+            ClearForceLabels();
+            foreach (var id in labelledMembers)
+            {
+                var m = GetMember(id);
+                if (m == null || !inst.MemberForces.TryGetValue(m.memberId, out double f)) continue;
+                string txt = SolutionGenerator.Sym(m.memberId, inst.Problem) + " = " + ProblemInstance.Force(Math.Abs(f)) + (f < -1e-6 ? " (C)" : f > 1e-6 ? " (T)" : "");
+                var lab = MakeLabel(root, txt, theme.labelSize * 0.75f, f < 0 ? new Color(1f, 0.6f, 0.55f) : new Color(0.6f, 0.8f, 1f));
+                lab.transform.localPosition = (m.localA + m.localB) * 0.5f + Vector3.forward * -0.05f + Vector3.up * theme.labelSize * 0.9f;
+                forceLabels[m.memberId] = lab;
+            }
+            if (showReactions)
+                foreach (var r in inst.Reactions)
+                {
+                    if (r.IsMoment || !nodeLocal.ContainsKey(r.Node)) continue;
+                    var lab = MakeLabel(root, SolutionGenerator.Sym(r.Name, inst.Problem) + " = " + ProblemInstance.Force(r.Value), theme.labelSize * 0.75f, theme.reactionLabelColor);
+                    Vector3 off = new Vector3((float)r.Direction.x, (float)r.Direction.y, 0) * (theme.jointRadius * 4f) + Vector3.left * theme.labelSize * 1.5f;
+                    lab.transform.localPosition = nodeLocal[r.Node] + off;
+                    forceLabels[r.Name] = lab;
+                }
+        }
+
+        public void ClearForceLabels()
+        {
+            foreach (var l in forceLabels.Values) if (l) MeshFactory.SafeDestroy(l.gameObject);
+            forceLabels.Clear();
+        }
+
+        public void ResetThickness()
+        {
+            foreach (var m in members.Values) m.SetThickness(1f);
         }
 
         /// <summary>True if a local point lies inside the structure's bounding box (with a small margin).</summary>

@@ -13,7 +13,9 @@ namespace GLaDE.Problems
     {
         /// <summary>Homework mode: read, work it out on the notepad, enter answers.</summary>
         Attempt,
-        Isolate, ChooseSide, BuildFbd, Solve, Done
+        Isolate, ChooseSide, BuildFbd, Solve, Done,
+        /// <summary>What-if sandbox: drag loads, watch every force update live.</summary>
+        Explore
     }
 
     /// <summary>
@@ -81,6 +83,7 @@ namespace GLaDE.Problems
                 whiteboard.ResetPressed += ResetAttempt;
                 whiteboard.ReviewPressed += ReviewSolution;
                 whiteboard.BackToSheetPressed += BackToSheet;
+                whiteboard.WhatIfPressed += StartExplore;
                 if (whiteboard.answerPanel != null) whiteboard.answerPanel.Changed += OnAnswersChanged;
             }
             if (sectionPlane != null) sectionPlane.Released += OnCutReleased;
@@ -162,7 +165,7 @@ namespace GLaDE.Problems
                     whiteboard?.ShowAnswerSheet(true);
                     whiteboard?.SetPhase("<b>Your homework.</b>  Solve it the way you would on paper: sketch the free-body diagram on the notepad, write the equilibrium equations, and enter your answers here. Stuck? <b>Guide me</b> walks you through taking the structure apart.");
                     whiteboard?.SetProgress("");
-                    whiteboard?.ConfigureButtons(check: true, guide: true, newProblem: true);
+                    whiteboard?.ConfigureButtons(check: true, guide: true, newProblem: true, whatIf: true);
                     whiteboard?.SetButtonEnabled(whiteboard.checkButton, whiteboard.answerPanel != null && whiteboard.answerPanel.IsComplete());
                     break;
                 case Phase.Isolate:
@@ -197,7 +200,7 @@ namespace GLaDE.Problems
                         ? "<b>Done, with guidance.</b>  You have seen the method once. Generate a new problem and try to reach the answers on your own before asking for help."
                         : $"<b>Correct — every value.</b>  Solved unaided in {Attempts} attempt{(Attempts == 1 ? "" : "s")}. New problem, new numbers, same method.");
                     whiteboard?.SetProgress("");
-                    whiteboard?.ConfigureButtons(newProblem: true, review: true, guide: !guided);
+                    whiteboard?.ConfigureButtons(newProblem: true, review: true, guide: !guided, whatIf: true);
                     structure.ClearMemberHighlights(); structure.ClearNodeHighlights();
                     structure.ShowMemberForces(true);
                     if (guided) ProgressStore.RecordGuided(problem.problemId);
@@ -266,6 +269,7 @@ namespace GLaDE.Problems
         {
             if (Instance == null || CurrentPhase == Phase.Attempt) return;
             StopAllCoroutines();
+            if (CurrentPhase == Phase.Explore) { EndExplore(); return; }
             LoadInstance(Instance);
         }
 
@@ -404,6 +408,7 @@ namespace GLaDE.Problems
 
         void Update()
         {
+            if (CurrentPhase == Phase.Explore) { UpdateExplore(); return; }
             if (CurrentPhase == Phase.Isolate && bodyGrab != null && bodyGrab.isSelected && Vector3.Distance(structure.Root.position, bodyHome) > 0.12f)
                 IsolateBody();
         }
@@ -615,6 +620,133 @@ namespace GLaDE.Problems
                     }
                     break;
             }
+        }
+
+        // ------------------------------------------------------------------ what-if sandbox
+
+        ProblemInstance exploreInst;
+        StaticsProblem exploreProblem;         // runtime clone whose loads we edit
+        bool exploreOnHomework;                // true when exploring the solved homework numbers
+        readonly List<LoadHandle> handles = new List<LoadHandle>();
+        readonly Dictionary<string, (string node, double magnitude)> exploreLoads = new Dictionary<string, (string, double)>();
+
+        /// <summary>
+        /// Opens the sandbox. Before the problem is answered it uses fresh random numbers (so nothing is
+        /// given away); after a correct answer it uses the solved problem itself.
+        /// </summary>
+        public void StartExplore()
+        {
+            if (CurrentPhase != Phase.Attempt && CurrentPhase != Phase.Done) return;
+            exploreOnHomework = CurrentPhase == Phase.Done;
+            var baseInst = exploreOnHomework ? Instance : ProblemGenerator.Generate(problem, seeder.Next(1, int.MaxValue));
+            if (baseInst == null) return;
+
+            ClearSockets(); ClearSidePickers(); ClearBodyGrab();
+            ShowTools(false);
+            if (exploreProblem != null) Destroy(exploreProblem);
+            exploreProblem = Instantiate(problem);
+            exploreProblem.name = problem.name + " (what-if)";
+            exploreLoads.Clear();
+            foreach (var l in baseInst.Loads) exploreLoads[l.Id] = (l.Node, l.Magnitude);
+
+            exploreInst = SolveExplore(baseInst.Params, baseInst.Seed);
+            if (exploreInst == null) return;
+            structure.Build(exploreInst, theme, problem.worldScale);
+            handles.Clear();
+            handles.AddRange(structure.CreateLoadHandles());
+            foreach (var h in handles) h.Released += _ => RefreshExplore();
+            CurrentPhase = Phase.Explore;
+            whiteboard?.ShowAnswerSheet(false);
+            whiteboard?.SetHeader($"{problem.title}  <size=70%><color=#FFFFFF99>what-if sandbox</color></size>",
+                exploreOnHomework ? "Your solved problem. Change it and see what happens." : "Different numbers from your homework, so nothing here spoils it.");
+            whiteboard?.SetPhase("<b>What if?</b>  Grab the glowing knob at the end of a load. Slide it to another joint to move the load; pull it away from the joint to make it bigger, push it in to make it smaller. Every member re-colours and re-thickens live: blue tension, red compression, grey zero-force.");
+            whiteboard?.SetProgress("");
+            whiteboard?.SetButtonLabel(whiteboard.backToSheetButton, exploreOnHomework ? "< Back" : "< Back to answers");
+            RefreshExplore();
+        }
+
+        ProblemInstance SolveExplore(Dictionary<string, double> prm, int seed)
+        {
+            foreach (var def in exploreProblem.loads)
+                if (exploreLoads.TryGetValue(def.id, out var e)) { def.node = e.node; def.magnitude = e.magnitude.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture); }
+            var inst = new ProblemInstance { Problem = exploreProblem, Seed = seed };
+            foreach (var kv in prm) inst.Params[kv.Key] = kv.Value;
+            if (!StaticsSolver.Solve(exploreProblem, inst, out string err)) { Debug.LogWarning("[GLaDE] what-if solve failed: " + err); return null; }
+            inst.PromptText = "";
+            return inst;
+        }
+
+        void RefreshExplore()
+        {
+            if (CurrentPhase != Phase.Explore || exploreInst == null) return;
+            structure.ApplyForces(exploreInst, problem.targets.Where(t => problem.IsMemberId(t)), true);
+            var sb = new System.Text.StringBuilder();
+            foreach (var t in problem.targets)
+            {
+                if (!exploreInst.TryGetAnswer(t, out double v)) continue;
+                string val = problem.IsMemberId(t)
+                    ? (v < -1e-6 ? ProblemInstance.Force(-v) + " (C)" : v > 1e-6 ? ProblemInstance.Force(v) + " (T)" : "0 (zero-force)")
+                    : ProblemInstance.Force(v);
+                sb.Append(SolutionGenerator.Sym(t, problem)).Append(" = ").Append(val).Append('\n');
+            }
+            string maxT = null, maxC = null; double vT = 0, vC = 0;
+            foreach (var kv in exploreInst.MemberForces) { if (kv.Value > vT) { vT = kv.Value; maxT = kv.Key; } if (kv.Value < vC) { vC = kv.Value; maxC = kv.Key; } }
+            if (maxT != null) sb.Append("\nMost tension: <b>").Append(maxT).Append("</b> at ").Append(ProblemInstance.Force(vT));
+            if (maxC != null) sb.Append("\nMost compression: <b>").Append(maxC).Append("</b> at ").Append(ProblemInstance.Force(-vC));
+            sb.Append("\n\nLoads now:  ");
+            foreach (var kv in exploreLoads) sb.Append(SolutionGenerator.Sym(kv.Key)).Append(" = ").Append(ProblemInstance.Force(kv.Value.magnitude)).Append(" at ").Append(kv.Value.node).Append("    ");
+            whiteboard?.ShowStep("Live forces", sb.ToString(), false);
+            whiteboard?.ConfigureButtons(backToSheet: true, newProblem: true);
+        }
+
+        /// <summary>Applies a what-if change (used by the handles and by tests).</summary>
+        public void WhatIf(string loadId, string node, double magnitude)
+        {
+            if (CurrentPhase != Phase.Explore || !exploreLoads.ContainsKey(loadId) || !exploreInst.Nodes.ContainsKey(node)) return;
+            exploreLoads[loadId] = (node, magnitude);
+            var solved = SolveExplore(exploreInst.Params, exploreInst.Seed);
+            if (solved == null) return;
+            exploreInst = solved;
+            double maxLoad = Math.Max(1e-3, exploreInst.Loads.Max(l => l.Magnitude));
+            foreach (var l in exploreInst.Loads) { var v = structure.GetLoad(l.Id); if (v != null) structure.LayoutLoad(v, l.Node, l.Magnitude, maxLoad); }
+            RefreshExplore();
+        }
+
+        void UpdateExplore()
+        {
+            foreach (var h in handles)
+            {
+                if (h == null || !h.IsGrabbed) continue;
+                var (curNode, curMag) = exploreLoads[h.loadId];
+                string node = structure.NearestNode(h.transform.position, out _);
+                Vector3 nodeWorld = structure.NodeWorld(node);
+                float pull = Vector3.Distance(h.transform.position, nodeWorld);
+                var range = LoadRange(h.loadId, curMag);
+                float t = Mathf.InverseLerp(theme.arrowMinLength, theme.arrowMaxLength + 0.12f, pull);
+                double mag = range.min + Math.Round(t * (range.max - range.min) / range.step) * range.step;
+                mag = Math.Clamp(mag, range.min, range.max);
+                if (node != curNode || Math.Abs(mag - curMag) > 1e-6) WhatIf(h.loadId, node, mag);
+            }
+        }
+
+        (double min, double max, double step) LoadRange(string loadId, double current)
+        {
+            var def = problem.loads.FirstOrDefault(l => l.id == loadId);
+            var prm = def != null ? problem.parameters.FirstOrDefault(p => p.name == def.magnitude.Trim()) : null;
+            if (prm != null) return (prm.min, prm.max, prm.step);
+            double step = current >= 10 ? 5 : 1;
+            return (step, Math.Max(current * 2, step * 4), step);
+        }
+
+        void EndExplore()
+        {
+            structure.DestroyLoadHandles();
+            structure.ClearForceLabels();
+            handles.Clear();
+            var back = Instance;
+            bool wasDone = exploreOnHomework;
+            LoadInstance(back);
+            if (wasDone) EnterPhase(Phase.Done);
         }
 
         // ------------------------------------------------------------------ automation for tests

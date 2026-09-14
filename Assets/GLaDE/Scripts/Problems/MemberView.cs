@@ -20,6 +20,14 @@ namespace GLaDE.Problems
         public Vector3 localA, localB;
 
         MemberState stateBeforeHighlight = MemberState.Normal;
+        float baseRadius, length;
+
+        /// <summary>Scales the member girth (1 = as built), e.g. to show force magnitude.</summary>
+        public void SetThickness(float factor)
+        {
+            if (body == null) return;
+            body.transform.localScale = new Vector3(baseRadius * 2 * factor, length * 0.5f, baseRadius * 2 * factor);
+        }
 
         /// <summary>Configures the cylinder between two local points of the structure root.</summary>
         public void Configure(string id, string a, string b, Vector3 la, Vector3 lb, float radius, VisualTheme t)
@@ -40,6 +48,7 @@ namespace GLaDE.Problems
                 cyl.transform.SetParent(transform, false);
                 body = cyl.GetComponent<MeshRenderer>();
             }
+            baseRadius = radius; length = len;
             body.transform.localScale = new Vector3(radius * 2, len * 0.5f, radius * 2);
             if (capsule == null) capsule = gameObject.AddComponent<CapsuleCollider>();
             capsule.direction = 1;

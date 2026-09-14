@@ -703,6 +703,7 @@ namespace GLaDE.EditorTools
 
             wb.backToSheetButton = UIKit.MakeButton(row, "BackToSheet", "< Back to answers", 22, new Vector2(200, 70));
             wb.checkButton = UIKit.MakeButton(row, "Check", "Check answers", 22, new Vector2(200, 70), UIKit.AccentColor);
+            wb.whatIfButton = UIKit.MakeButton(row, "WhatIf", "What if?", 22, new Vector2(150, 70), new Color(0.30f, 0.35f, 0.62f));
             wb.guideButton = UIKit.MakeButton(row, "Guide", "Guide me", 22, new Vector2(170, 70), UIKit.WarnColor);
             wb.backButton = UIKit.MakeButton(row, "Back", "< Back", 22, new Vector2(140, 70));
             wb.nextButton = UIKit.MakeButton(row, "Next", "Next step >", 22, new Vector2(190, 70), UIKit.AccentColor);

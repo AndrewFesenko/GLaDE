@@ -40,6 +40,7 @@ namespace GLaDE.Problems
         public Button backToSheetButton;
         public Button faceButton;
         public Button sizeButton;
+        public Button whatIfButton;
 
         [Header("Extras")]
         public BoardControls controls;
@@ -49,7 +50,7 @@ namespace GLaDE.Problems
         public float charactersPerSecond = 70f;
         public bool keyboardShortcuts = true;
 
-        public event Action CheckPressed, GuidePressed, NextPressed, BackPressed, HintPressed, SkipPressed, NewProblemPressed, ResetPressed, ReviewPressed, BackToSheetPressed;
+        public event Action CheckPressed, GuidePressed, NextPressed, BackPressed, HintPressed, SkipPressed, NewProblemPressed, ResetPressed, ReviewPressed, BackToSheetPressed, WhatIfPressed;
 
         Coroutine reveal;
         Coroutine feedbackFade;
@@ -67,6 +68,7 @@ namespace GLaDE.Problems
             Wire(resetButton, () => ResetPressed);
             Wire(reviewButton, () => ReviewPressed);
             Wire(backToSheetButton, () => BackToSheetPressed);
+            Wire(whatIfButton, () => WhatIfPressed);
             if (faceButton) faceButton.onClick.AddListener(() => { sounds?.PlayClick(); controls?.FaceMe(); });
             if (sizeButton) sizeButton.onClick.AddListener(() => { sounds?.PlayClick(); controls?.ToggleSize(); UIKit.SetLabel(sizeButton, controls != null && controls.IsBig ? "Smaller" : "Bigger"); });
         }
@@ -181,11 +183,11 @@ namespace GLaDE.Problems
 
         /// <summary>Which buttons are visible. Everything not listed is hidden.</summary>
         public void ConfigureButtons(bool check = false, bool guide = false, bool next = false, bool back = false, bool hint = false,
-            bool skip = false, bool newProblem = false, bool reset = false, bool review = false, bool backToSheet = false)
+            bool skip = false, bool newProblem = false, bool reset = false, bool review = false, bool backToSheet = false, bool whatIf = false)
         {
             Show(checkButton, check); Show(guideButton, guide); Show(nextButton, next); Show(backButton, back);
             Show(hintButton, hint); Show(skipButton, skip); Show(newProblemButton, newProblem); Show(resetButton, reset); Show(reviewButton, review);
-            Show(backToSheetButton, backToSheet);
+            Show(backToSheetButton, backToSheet); Show(whatIfButton, whatIf);
         }
 
         static void Show(Button b, bool on) { if (b) b.gameObject.SetActive(on); }
